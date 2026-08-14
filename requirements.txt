@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+google-genai
+requests
+aiofiles
+tqdm
+pysubs2
+subliminal
+babelfish
+pydantic
+yt-dlp
+genanki

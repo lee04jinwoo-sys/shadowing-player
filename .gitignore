@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Cache & Local Videos & Exports
+cache/*
+!cache/.gitkeep
+videos/*
+!videos/.gitkeep
+*.mp4
+*.mkv
+*.smi
+*.srt
+*.apkg
+*.csv
+
+# OS & IDE
+.DS_Store
+.vscode/
+.idea/
