@@ -2,11 +2,11 @@
 // app.js — 앱 진입점 (초기화 + 이벤트 연결)
 // ====================================
 
-import state, { loadEpisodeState, saveStateToLocal, getGlobalExtracted, getGlobalCompletedEpisodes, addYouTubeToHistory, getYouTubeHistory, getLastWatched, saveLastWatched } from './state.js';
-import * as api from './api.js';
-import * as player from './player.js';
-import { renderSubtitles, updateActiveSubtitleUI, clearOverlays, findActiveSubtitleIndex, toggleStar, isShortSubtitle } from './subtitles.js';
-import { setMode, bindModeEvents, updateDictationPanel, toggleBlur } from './modes.js';
+import state, { loadEpisodeState, saveStateToLocal, getGlobalExtracted, getGlobalCompletedEpisodes, addYouTubeToHistory, getYouTubeHistory, getLastWatched, saveLastWatched } from './state.js?v=20260816_2105';
+import * as api from './api.js?v=20260816_2105';
+import * as player from './player.js?v=20260816_2105';
+import { renderSubtitles, updateActiveSubtitleUI, clearOverlays, findActiveSubtitleIndex, toggleStar, isShortSubtitle } from './subtitles.js?v=20260816_2105';
+import { setMode, bindModeEvents, updateDictationPanel, toggleBlur } from './modes.js?v=20260816_2105';
 
 // --- DOM References ---
 const episodeSelect = document.getElementById("episode-select");

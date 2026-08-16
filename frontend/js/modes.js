@@ -2,9 +2,9 @@
 // modes.js — 학습 모드 (리스닝/쉐도잉/맞추기/추출)
 // ====================================
 
-import state, { saveStateToLocal } from './state.js';
-import { renderSubtitles, updateActiveSubtitleUI, updateSubVisibility, toggleStar, formatTime } from './subtitles.js';
-import { addSentenceToAnki, getAIExplanation } from './api.js';
+import state, { saveStateToLocal } from './state.js?v=20260816_2105';
+import { renderSubtitles, updateActiveSubtitleUI, updateSubVisibility, toggleStar, formatTime } from './subtitles.js?v=20260816_2105';
+import { addSentenceToAnki, getAIExplanation } from './api.js?v=20260816_2105';
 
 // --- DOM References ---
 const modeListening = document.getElementById("mode-listening");

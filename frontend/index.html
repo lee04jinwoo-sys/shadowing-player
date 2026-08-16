@@ -273,7 +273,12 @@
       window._ytAPIReady = true;
     };
 </script>
+<script>
+  window.addEventListener('error', function(e) {
+    console.error('GLOBAL ERROR:', e.message, e.filename, e.lineno);
+  });
+</script>
 <!-- Load App scripts -->
-<script type="module" src="/js/app.js?v=20260816_2100"></script>
+<script type="module" src="/js/app.js?v=20260816_2105"></script>
 </body>
 </html>

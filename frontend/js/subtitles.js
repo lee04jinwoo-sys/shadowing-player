@@ -2,7 +2,7 @@
 // subtitles.js — 자막 렌더링 & 동기화
 // ====================================
 
-import state, { saveStateToLocal } from './state.js';
+import state, { saveStateToLocal } from './state.js?v=20260816_2105';
 
 // --- DOM References ---
 const subtitleList = document.getElementById("subtitle-list");
