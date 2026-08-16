@@ -74,27 +74,30 @@ async function init() {
 // --- API Calls ---
 async function fetchEpisodes() {
   try {
-    state.episodes = await api.fetchEpisodeList();
-    const globalExtracted = getGlobalExtracted();
-    const globalCompleted = getGlobalCompletedEpisodes ? getGlobalCompletedEpisodes() : new Set();
+    const list = await api.fetchEpisodeList();
+    state.episodes = Array.isArray(list) ? list : [];
+    const globalExtracted = getGlobalExtracted() || {};
+    const globalCompleted = (typeof getGlobalCompletedEpisodes === 'function') ? getGlobalCompletedEpisodes() : new Set();
     
+    if (!episodeSelect) return;
     episodeSelect.innerHTML = '<option value="">에피소드를 선택하세요</option>';
     state.episodes.forEach(ep => {
       const option = document.createElement("option");
       option.value = ep.ep_key;
-      const hasExtracted = globalExtracted[ep.ep_key] && globalExtracted[ep.ep_key].length > 0;
-      const isCompleted = globalCompleted.has(ep.ep_key);
+      const extractedList = globalExtracted && globalExtracted[ep.ep_key];
+      const hasExtracted = Array.isArray(extractedList) && extractedList.length > 0;
+      const isCompleted = globalCompleted && typeof globalCompleted.has === 'function' && globalCompleted.has(ep.ep_key);
       
       let prefix = "";
       if (isCompleted) prefix += "✅ ";
       if (hasExtracted) prefix += "📝 ";
       
-      option.textContent = `${prefix}${ep.ep_key.toUpperCase()} - ${ep.video_filename} (${ep.format.toUpperCase()})`;
+      option.textContent = `${prefix}${(ep.ep_key || '').toUpperCase()} - ${ep.video_filename || ep.ep_key} (${(ep.format || '').toUpperCase()})`;
       episodeSelect.appendChild(option);
     });
   } catch (err) {
     console.error("Failed to fetch episodes:", err);
-    episodeSelect.innerHTML = '<option value="">에피소드 로드 실패</option>';
+    if (episodeSelect) episodeSelect.innerHTML = '<option value="">에피소드 로드 실패</option>';
   }
 }
 

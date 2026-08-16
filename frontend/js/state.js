@@ -30,7 +30,8 @@ try {
   
   const savedExtracted = localStorage.getItem('shadowing_extracted');
   if (savedExtracted) {
-    globalExtracted = JSON.parse(savedExtracted);
+    const parsed = JSON.parse(savedExtracted);
+    if (parsed && typeof parsed === 'object') globalExtracted = parsed;
   }
 } catch (e) {
   console.error("Failed to load saved state", e);
