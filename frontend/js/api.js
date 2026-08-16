@@ -3,13 +3,33 @@
 // ====================================
 
 export async function fetchEpisodeList() {
-  const res = await fetch("/api/files");
-  return await res.json();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 6000);
+  try {
+    const res = await fetch("/api/files", { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    clearTimeout(timeoutId);
+    console.error("fetchEpisodeList failed:", err);
+    throw err;
+  }
 }
 
 export async function fetchSubtitles(epKey) {
-  const res = await fetch(`/api/subtitles/${epKey}`);
-  return await res.json();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(`/api/subtitles/${epKey}`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    clearTimeout(timeoutId);
+    console.error("fetchSubtitles failed:", err);
+    throw err;
+  }
 }
 
 export async function fetchSubtitlesOnline(epKey) {

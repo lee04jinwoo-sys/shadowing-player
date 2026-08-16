@@ -5,7 +5,7 @@ from backend.services.episode_service import get_episodes, find_episode
 
 router = APIRouter(prefix="/api")
 
-@router.get("/files")
+@router.api_route("/files", methods=["GET", "HEAD"])
 def get_episodes_api():
     try:
         return get_episodes()

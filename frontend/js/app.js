@@ -73,16 +73,24 @@ async function init() {
 // --- API Calls ---
 async function fetchEpisodes() {
   try {
-    state.episodes = await api.fetchEpisodeList();
-    const globalExtracted = getGlobalExtracted();
-    const globalCompleted = getGlobalCompletedEpisodes ? getGlobalCompletedEpisodes() : new Set();
+    const list = await api.fetchEpisodeList();
+    state.episodes = Array.isArray(list) ? list : [];
+    const globalExtracted = getGlobalExtracted() || {};
+    const globalCompleted = (typeof getGlobalCompletedEpisodes === 'function')
+      ? getGlobalCompletedEpisodes() 
+      : new Set();
     
+    if (state.episodes.length === 0) {
+      episodeSelect.innerHTML = '<option value="">등록된 에피소드가 없습니다</option>';
+      return;
+    }
+
     episodeSelect.innerHTML = '<option value="">에피소드를 선택하세요</option>';
     state.episodes.forEach(ep => {
       const option = document.createElement("option");
       option.value = ep.ep_key;
       const hasExtracted = globalExtracted[ep.ep_key] && globalExtracted[ep.ep_key].length > 0;
-      const isCompleted = globalCompleted.has(ep.ep_key);
+      const isCompleted = globalCompleted && typeof globalCompleted.has === 'function' && globalCompleted.has(ep.ep_key);
       
       let prefix = "";
       if (isCompleted) prefix += "✅ ";
@@ -93,7 +101,7 @@ async function fetchEpisodes() {
     });
   } catch (err) {
     console.error("Failed to fetch episodes:", err);
-    episodeSelect.innerHTML = '<option value="">에피소드 로드 실패</option>';
+    episodeSelect.innerHTML = '<option value="">에피소드 로드 실패 (다시 시도)</option>';
   }
 }
 
