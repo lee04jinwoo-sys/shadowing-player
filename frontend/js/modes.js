@@ -254,6 +254,28 @@ export function bindModeEvents() {
       );
     });
   }
+
+  const toggleBlurBtn = document.getElementById("toggle-blur-btn");
+  if (toggleBlurBtn) {
+    toggleBlurBtn.onclick = () => toggleListeningBlur();
+  }
+}
+
+export function toggleListeningBlur() {
+  state.listeningBlurDisabled = !state.listeningBlurDisabled;
+  document.body.classList.toggle("unblurred", state.listeningBlurDisabled);
+  
+  const label = document.getElementById("toggle-blur-label");
+  const icon = document.getElementById("toggle-blur-icon");
+  if (label && icon) {
+    if (state.listeningBlurDisabled) {
+      icon.textContent = "visibility_off";
+      label.textContent = "자막 전체 가리기 (V)";
+    } else {
+      icon.textContent = "visibility";
+      label.textContent = "자막 전체 보기 (V)";
+    }
+  }
 }
 
 function getStarredItemsData() {

@@ -60,6 +60,7 @@ const state = {
   shadowingModeActive: true,
   dictationModeActive: false,
   dictationChecked: false,
+  listeningBlurDisabled: false,
   
   // Anki
   ankiConnected: false,

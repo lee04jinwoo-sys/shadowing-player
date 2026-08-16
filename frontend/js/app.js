@@ -6,7 +6,7 @@ import state, { loadEpisodeState, saveStateToLocal, getGlobalExtracted, getGloba
 import * as api from './api.js';
 import * as player from './player.js';
 import { renderSubtitles, updateActiveSubtitleUI, clearOverlays, findActiveSubtitleIndex, toggleStar, isShortSubtitle } from './subtitles.js';
-import { setMode, bindModeEvents, updateDictationPanel } from './modes.js';
+import { setMode, bindModeEvents, updateDictationPanel, toggleListeningBlur } from './modes.js';
 
 // --- DOM References ---
 const episodeSelect = document.getElementById("episode-select");
@@ -587,6 +587,10 @@ function handleKeyboardShortcuts(e) {
         e.preventDefault();
         toggleStar(state.currentSubtitleIndex);
       }
+      break;
+    case "KeyV":
+      e.preventDefault();
+      toggleListeningBlur();
       break;
     case "Minus":
     case "NumpadSubtract":

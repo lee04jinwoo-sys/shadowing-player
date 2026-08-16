@@ -936,10 +936,12 @@ body.mode-listening .subtitle-item .text-kr {
 }
 
 body.mode-listening .subtitle-item:hover .text-en,
-body.mode-listening .subtitle-item:hover .text-kr {
+body.mode-listening .subtitle-item:hover .text-kr,
+body.mode-listening.unblurred .subtitle-item .text-en,
+body.mode-listening.unblurred .subtitle-item .text-kr {
   filter: blur(0);
   opacity: 1;
-  transition: filter 1.2s ease-out, opacity 1.2s ease-out;
+  transition: filter 0.2s ease-out, opacity 0.2s ease-out;
   user-select: auto;
 }
 
