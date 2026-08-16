@@ -19,7 +19,11 @@ export async function fetchSubtitlesOnline(epKey) {
 
 export async function checkAnkiConnection() {
   try {
-    const res = await fetch("/api/anki/status");
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1500);
+    const res = await fetch("/api/anki/status", { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (!res.ok) return false;
     const data = await res.json();
     return data.connected;
   } catch {
