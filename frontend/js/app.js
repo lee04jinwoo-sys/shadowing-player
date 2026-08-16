@@ -33,15 +33,16 @@ let sourceMode = 'local'; // 'local' or 'youtube'
 init();
 
 async function init() {
-  await fetchEpisodes();
-  await checkAnkiStatus();
-  setInterval(checkAnkiStatus, 5000);
-  loadYouTubeHistory();
   bindEvents();
   
   // Set initial mode to Listening mode (apply blur)
   const listeningBtn = document.getElementById("mode-listening");
   if (listeningBtn) setMode(listeningBtn);
+  
+  loadYouTubeHistory();
+  fetchEpisodes();
+  checkAnkiStatus();
+  setInterval(checkAnkiStatus, 5000);
   
   // Load last watched state
   try {
