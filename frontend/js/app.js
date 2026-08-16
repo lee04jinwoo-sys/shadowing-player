@@ -2,7 +2,7 @@
 // app.js — 앱 진입점 (초기화 + 이벤트 연결)
 // ====================================
 
-import state, { loadEpisodeState, saveStateToLocal, getGlobalExtracted, getGlobalCompletedEpisodes, addYouTubeToHistory, getYouTubeHistory } from './state.js';
+import state, { loadEpisodeState, saveStateToLocal, getGlobalExtracted, getGlobalCompletedEpisodes, addYouTubeToHistory, getYouTubeHistory, getLastWatched, saveLastWatched } from './state.js';
 import * as api from './api.js';
 import * as player from './player.js';
 import { renderSubtitles, updateActiveSubtitleUI, clearOverlays, findActiveSubtitleIndex, toggleStar, isShortSubtitle } from './subtitles.js';
@@ -33,20 +33,25 @@ let sourceMode = 'local'; // 'local' or 'youtube'
 init();
 
 async function init() {
-  await fetchEpisodes();
-  await checkAnkiStatus();
-  setInterval(checkAnkiStatus, 5000);
-  loadYouTubeHistory();
+  // 1. Bind events IMMEDIATELY so buttons, tabs, shortcuts are 100% responsive right away
   bindEvents();
   
-  // Set initial mode to Listening mode (apply blur)
+  // 2. Set initial mode to Listening mode (apply blur)
   const listeningBtn = document.getElementById("mode-listening");
   if (listeningBtn) setMode(listeningBtn);
   
-  // Load last watched state
+  loadYouTubeHistory();
+  
+  // 3. Check Anki status in background
+  checkAnkiStatus();
+  setInterval(checkAnkiStatus, 5000);
+  
+  // 4. Fetch episodes
+  await fetchEpisodes();
+  
+  // 5. Restore last watched state
   try {
-    const m = await import('./state.js');
-    const lastWatched = m.getLastWatched();
+    const lastWatched = getLastWatched();
     if (lastWatched && lastWatched.epKey) {
       if (lastWatched.sourceMode === 'youtube') {
         const videoId = lastWatched.epKey.replace('yt_', '');
@@ -64,10 +69,12 @@ async function init() {
       if (lastWatched.timeMs) {
         setTimeout(() => {
           player.seekTo(lastWatched.timeMs);
-        }, 1000); // Give player time to initialize
+        }, 800);
       }
     }
-  } catch (e) { console.error("Failed to restore last watched", e); }
+  } catch (e) {
+    console.error("Failed to restore last watched", e);
+  }
 }
 
 // --- API Calls ---
@@ -385,7 +392,7 @@ player.onTimeUpdate((timeMs) => {
     
     // Save position
     if (state.currentEpisode) {
-      import('./state.js').then(m => m.saveLastWatched(state.currentEpisode.ep_key, timeMs, sourceMode));
+      saveLastWatched(state.currentEpisode.ep_key, timeMs, sourceMode);
     }
     
     if (activeIdx !== -1) {
