@@ -234,7 +234,7 @@ export function isPaused() {
 }
 
 export function adjustSpeed(delta) {
-  state.playbackSpeed = Math.min(Math.max(state.playbackSpeed + delta, 0.5), 2.0);
+  state.playbackSpeed = Math.min(Math.max(Math.round((state.playbackSpeed + delta) * 10) / 10, 0.5), 2.0);
   if (activeAdapter === 'youtube' && ytPlayer && ytReady) {
     ytPlayer.setPlaybackRate(state.playbackSpeed);
   } else {

@@ -1,0 +1,12 @@
+# Ignore heavy video and cache files for Vercel deployment
+videos/
+cache/
+__pycache__/
+*.mp4
+*.mkv
+*.avi
+*.smi
+*.srt
+*.apkg
+*.csv
+.git/

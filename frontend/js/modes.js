@@ -66,7 +66,7 @@ export function setMode(modeBtn) {
   } else if (modeBtn === ankiBtn) {
     if (contentSubs) contentSubs.style.display = "none";
     if (contentDictation) contentDictation.style.display = "none";
-    if (ankiExtractionPanel) ankiExtractionPanel.style.display = "block";
+    if (ankiExtractionPanel) ankiExtractionPanel.style.display = "flex";
     state.showEnSub = true; state.showKrSub = true;
     renderStarredList();
   }

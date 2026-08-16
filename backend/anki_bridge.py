@@ -50,26 +50,32 @@ def add_sentence_to_anki(sentence: str) -> dict:
         sentences_data = {"sentences": [sentence]}
         vocab_data = {"vocab": []}
         
-        # Run AI complete and insert
         success, added_s, added_v = run_note_completion(sentences_data, vocab_data)
         
-        if success:
-            # Run post processing: TTS and organizer
-            logger.info("Running TTS generation for new sentence card...")
+        if not added_s:
+            logger.warning("AI note completion returned 0 items. Adding card directly via AnkiConnect fallback...")
             try:
-                AnkiTTSFiller.run_audio_addition()
-            except Exception as tts_err:
-                logger.error(f"TTS generation error: {tts_err}")
-                
-            logger.info("Running deck organizer...")
-            try:
-                run_organizer()
-            except Exception as org_err:
-                logger.error(f"Organizer error: {org_err}")
+                from config import DECK_SENTENCE, MODEL_SENTENCE
+                AnkiConnector.add_note(DECK_SENTENCE, MODEL_SENTENCE, {"문장": sentence, "해석": ""})
+                added_s = [sentence]
+            except Exception as direct_err:
+                logger.error(f"Direct AnkiConnect fallback failed: {direct_err}")
+                return {"success": False, "error": f"Failed to add card to Anki: {direct_err}"}
 
-            return {"success": True, "added": added_s}
-        else:
-            return {"success": False, "error": "Enrichment pipeline failed"}
+        # Run post processing: TTS and organizer
+        logger.info("Running TTS generation for new sentence card...")
+        try:
+            AnkiTTSFiller.run_audio_addition()
+        except Exception as tts_err:
+            logger.error(f"TTS generation error: {tts_err}")
+            
+        logger.info("Running deck organizer...")
+        try:
+            run_organizer()
+        except Exception as org_err:
+            logger.error(f"Organizer error: {org_err}")
+
+        return {"success": True, "added": added_s}
 
     except Exception as e:
         logger.error(f"Error adding sentence: {e}")

@@ -588,11 +588,23 @@ function handleKeyboardShortcuts(e) {
         toggleStar(state.currentSubtitleIndex);
       }
       break;
+    case "Minus":
+    case "NumpadSubtract":
+      e.preventDefault();
+      player.adjustSpeed(-0.1);
+      break;
+    case "Equal":
+    case "NumpadAdd":
+      e.preventDefault();
+      player.adjustSpeed(0.1);
+      break;
     case "BracketLeft":
-      player.adjustSpeed(-0.25);
+      e.preventDefault();
+      player.adjustSpeed(-0.1);
       break;
     case "BracketRight":
-      player.adjustSpeed(0.25);
+      e.preventDefault();
+      player.adjustSpeed(0.1);
       break;
   }
 }
