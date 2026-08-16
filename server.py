@@ -40,7 +40,7 @@ app.include_router(export.router)
 app.mount("/css", StaticFiles(directory="frontend/css"), name="css")
 app.mount("/js", StaticFiles(directory="frontend/js"), name="js")
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def read_root():
     return FileResponse(os.path.join("frontend", "index.html"))
 

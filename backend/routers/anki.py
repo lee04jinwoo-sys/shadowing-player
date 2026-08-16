@@ -11,7 +11,7 @@ class VocabModel(BaseModel):
     word: str
     meaning: str = ""
 
-@router.get("/status")
+@router.api_route("/status", methods=["GET", "HEAD"])
 def get_anki_status():
     connected = check_anki_connection()
     return {"connected": connected}

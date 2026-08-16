@@ -6,7 +6,7 @@ from backend.subtitle_fetcher import fetch_subtitles_for_video
 
 router = APIRouter(prefix="/api/subtitles")
 
-@router.get("/{ep_key}")
+@router.api_route("/{ep_key}", methods=["GET", "HEAD"])
 def get_episode_subtitles(ep_key: str):
     ep = find_episode(ep_key)
     video_path = ep["video_path"]
