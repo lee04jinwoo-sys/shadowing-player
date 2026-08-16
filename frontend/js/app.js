@@ -6,7 +6,7 @@ import state, { loadEpisodeState, saveStateToLocal, getGlobalExtracted, getGloba
 import * as api from './api.js';
 import * as player from './player.js';
 import { renderSubtitles, updateActiveSubtitleUI, clearOverlays, findActiveSubtitleIndex, toggleStar, isShortSubtitle } from './subtitles.js';
-import { setMode, bindModeEvents, updateDictationPanel, toggleListeningBlur } from './modes.js';
+import { setMode, bindModeEvents, updateDictationPanel, toggleBlur } from './modes.js';
 
 // --- DOM References ---
 const episodeSelect = document.getElementById("episode-select");
@@ -33,16 +33,15 @@ let sourceMode = 'local'; // 'local' or 'youtube'
 init();
 
 async function init() {
+  await fetchEpisodes();
+  await checkAnkiStatus();
+  setInterval(checkAnkiStatus, 5000);
+  loadYouTubeHistory();
   bindEvents();
   
   // Set initial mode to Listening mode (apply blur)
   const listeningBtn = document.getElementById("mode-listening");
   if (listeningBtn) setMode(listeningBtn);
-  
-  loadYouTubeHistory();
-  fetchEpisodes();
-  checkAnkiStatus();
-  setInterval(checkAnkiStatus, 5000);
   
   // Load last watched state
   try {
@@ -74,30 +73,27 @@ async function init() {
 // --- API Calls ---
 async function fetchEpisodes() {
   try {
-    const list = await api.fetchEpisodeList();
-    state.episodes = Array.isArray(list) ? list : [];
-    const globalExtracted = getGlobalExtracted() || {};
-    const globalCompleted = (typeof getGlobalCompletedEpisodes === 'function') ? getGlobalCompletedEpisodes() : new Set();
+    state.episodes = await api.fetchEpisodeList();
+    const globalExtracted = getGlobalExtracted();
+    const globalCompleted = getGlobalCompletedEpisodes ? getGlobalCompletedEpisodes() : new Set();
     
-    if (!episodeSelect) return;
     episodeSelect.innerHTML = '<option value="">에피소드를 선택하세요</option>';
     state.episodes.forEach(ep => {
       const option = document.createElement("option");
       option.value = ep.ep_key;
-      const extractedList = globalExtracted && globalExtracted[ep.ep_key];
-      const hasExtracted = Array.isArray(extractedList) && extractedList.length > 0;
-      const isCompleted = globalCompleted && typeof globalCompleted.has === 'function' && globalCompleted.has(ep.ep_key);
+      const hasExtracted = globalExtracted[ep.ep_key] && globalExtracted[ep.ep_key].length > 0;
+      const isCompleted = globalCompleted.has(ep.ep_key);
       
       let prefix = "";
       if (isCompleted) prefix += "✅ ";
       if (hasExtracted) prefix += "📝 ";
       
-      option.textContent = `${prefix}${(ep.ep_key || '').toUpperCase()} - ${ep.video_filename || ep.ep_key} (${(ep.format || '').toUpperCase()})`;
+      option.textContent = `${prefix}${ep.ep_key.toUpperCase()} - ${ep.video_filename} (${ep.format.toUpperCase()})`;
       episodeSelect.appendChild(option);
     });
   } catch (err) {
     console.error("Failed to fetch episodes:", err);
-    if (episodeSelect) episodeSelect.innerHTML = '<option value="">에피소드 로드 실패</option>';
+    episodeSelect.innerHTML = '<option value="">에피소드 로드 실패</option>';
   }
 }
 
@@ -293,7 +289,7 @@ function playPreviousSubtitle() {
   if (state.currentSubtitleIndex !== -1) {
     const curSub = state.subtitles[state.currentSubtitleIndex];
     // 문장 중간(1초 이상 진행)이면 현재 문장 처음으로, 아니면 이전 문장으로
-    if (timeMs > curSub.start_ms + 1000) {
+    if (curSub && timeMs > curSub.start_ms + 1000) {
       targetIdx = state.currentSubtitleIndex;
     } else {
       targetIdx = state.currentSubtitleIndex - 1;
@@ -592,10 +588,6 @@ function handleKeyboardShortcuts(e) {
         toggleStar(state.currentSubtitleIndex);
       }
       break;
-    case "KeyV":
-      e.preventDefault();
-      toggleListeningBlur();
-      break;
     case "Minus":
     case "NumpadSubtract":
       e.preventDefault();
@@ -613,6 +605,10 @@ function handleKeyboardShortcuts(e) {
     case "BracketRight":
       e.preventDefault();
       player.adjustSpeed(0.1);
+      break;
+    case "KeyV":
+      e.preventDefault();
+      toggleBlur();
       break;
   }
 }

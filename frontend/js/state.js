@@ -30,8 +30,7 @@ try {
   
   const savedExtracted = localStorage.getItem('shadowing_extracted');
   if (savedExtracted) {
-    const parsed = JSON.parse(savedExtracted);
-    if (parsed && typeof parsed === 'object') globalExtracted = parsed;
+    globalExtracted = JSON.parse(savedExtracted);
   }
 } catch (e) {
   console.error("Failed to load saved state", e);
@@ -61,7 +60,6 @@ const state = {
   shadowingModeActive: true,
   dictationModeActive: false,
   dictationChecked: false,
-  listeningBlurDisabled: false,
   
   // Anki
   ankiConnected: false,

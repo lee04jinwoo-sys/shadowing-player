@@ -20,7 +20,7 @@ export function initSTT() {
   recognition.lang = 'en-US';
   recognition.interimResults = true;
   recognition.maxAlternatives = 1;
-  recognition.continuous = false;
+  recognition.continuous = true;
 
   return true;
 }

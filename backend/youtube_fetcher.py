@@ -124,10 +124,23 @@ def fetch_youtube_subtitles(video_id: str) -> list:
                         subtitles = _parse_vtt(vtt_path)
                     else:
                         # Check for any .en.* subtitle file
+                        found_file = False
                         for fname in os.listdir(tmpdir):
-                            if '.en.' in fname:
+                            full_p = os.path.join(tmpdir, fname)
+                            if '.en.' in fname and fname.endswith('.vtt'):
                                 logger.info(f"Found subtitle file: {fname}")
-                        return []
+                                subtitles = _parse_vtt(full_p)
+                                found_file = True
+                                break
+                            elif '.en.' in fname and (fname.endswith('.json3') or fname.endswith('.json')):
+                                logger.info(f"Found subtitle file: {fname}")
+                                with open(full_p, 'r', encoding='utf-8') as f:
+                                    raw = json.load(f)
+                                subtitles = _parse_json3(raw)
+                                found_file = True
+                                break
+                        if not found_file:
+                            return []
                 else:
                     # Download the specific subtitle URL
                     subtitle_url = subs_data['url']

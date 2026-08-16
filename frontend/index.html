@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-<link href="/css/styles.css?v=20260816_99999" rel="stylesheet">
+<link href="/css/styles.css?v=20260814_9999" rel="stylesheet">
 </head>
 <body>
 
@@ -148,12 +148,13 @@
       </button>
     </div>
 
-    <!-- Subtitle List (Visible in Mode 1) -->
+    <!-- Subtitle List (Visible in Mode 1, 3) -->
     <div class="tab-content active" id="content-subs" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
-      <div id="listening-controls" style="display: flex; justify-content: flex-end; align-items: center; padding: 8px 16px 4px; gap: 8px;">
-        <button class="header-btn" id="toggle-blur-btn" title="자막 전체 블러 해제/설정 (단축키: V)" style="height: 28px; padding: 0 10px; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-          <span class="material-symbols-outlined" id="toggle-blur-icon" style="font-size: 16px; pointer-events: none;">visibility</span>
-          <span id="toggle-blur-label" style="pointer-events: none;">자막 전체 보기 (V)</span>
+      <div class="subtitle-header-bar" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 14px; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-muted);">
+        <span style="font-size: 12px; font-weight: 500;">자막 목록</span>
+        <button id="toggle-blur-btn" class="btn" title="전체 자막 블러 토글 (단축키: V)" style="height: 26px; padding: 0 8px; font-size: 11px; gap: 4px; border-radius: var(--radius-sm); border: 1px solid var(--border); color: var(--text-muted); cursor: pointer;">
+          <span class="material-symbols-outlined" id="blur-icon" style="font-size: 14px; pointer-events: none;">visibility_off</span>
+          <span id="blur-btn-text" style="pointer-events: none;">자막 숨김 (V)</span>
         </button>
       </div>
       <div class="subtitle-list-container" id="subtitle-list" style="flex: 1;">
@@ -273,6 +274,6 @@
     };
 </script>
 <!-- Load App scripts -->
-<script type="module" src="/js/app.js?v=20260816_10005"></script>
+<script type="module" src="/js/app.js?v=20260816_10004"></script>
 </body>
 </html>

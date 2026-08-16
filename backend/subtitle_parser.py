@@ -47,17 +47,14 @@ def merge_into_sentences(subs: list) -> list:
 
         # Check if the text ends with sentence-ending punctuation (. ? !)
         cleaned_text = text_en.rstrip()
-        ends_with_punct = (
-            cleaned_text.endswith('.') or 
-            cleaned_text.endswith('?') or 
-            cleaned_text.endswith('!') or 
-            cleaned_text.endswith('."') or 
-            cleaned_text.endswith('?"') or 
-            cleaned_text.endswith('!"')
-        )
+        ends_with_comma_break = (
+            cleaned_text.endswith(',') or 
+            cleaned_text.endswith(';') or
+            cleaned_text.endswith(',"')
+        ) and group_duration >= 3500
 
-        # Split on punctuation OR if duration reaches ~5 seconds at an original block boundary
-        if ends_with_punct or group_duration >= 5000:
+        # Split on punctuation OR comma over 3.5s OR if duration reaches ~5 seconds at an original block boundary
+        if ends_with_punct or ends_with_comma_break or group_duration >= 5000:
             sentences.append({
                 "start_ms": current_group[0]["start_ms"],
                 "end_ms": current_group[-1]["end_ms"],

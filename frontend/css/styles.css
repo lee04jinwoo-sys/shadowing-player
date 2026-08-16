@@ -926,23 +926,27 @@ input[type="range"]::-webkit-slider-thumb:hover {
    Learning Modes
    ======================================== */
 
-/* Listening Mode: blur subtitles */
-body.mode-listening .subtitle-item .text-en,
-body.mode-listening .subtitle-item .text-kr {
+/* Listening Mode: blur subtitles (active unless .blur-revealed is toggled) */
+body.mode-listening:not(.blur-revealed) .subtitle-item .text-en,
+body.mode-listening:not(.blur-revealed) .subtitle-item .text-kr {
   filter: blur(5px);
   opacity: 0.35;
   transition: filter 0.2s var(--ease), opacity 0.2s var(--ease);
   user-select: none;
 }
 
-body.mode-listening .subtitle-item:hover .text-en,
-body.mode-listening .subtitle-item:hover .text-kr,
-body.mode-listening.unblurred .subtitle-item .text-en,
-body.mode-listening.unblurred .subtitle-item .text-kr {
+body.mode-listening:not(.blur-revealed) .subtitle-item:hover .text-en,
+body.mode-listening:not(.blur-revealed) .subtitle-item:hover .text-kr {
   filter: blur(0);
   opacity: 1;
-  transition: filter 0.2s ease-out, opacity 0.2s ease-out;
+  transition: filter 1.2s ease-out, opacity 1.2s ease-out;
   user-select: auto;
+}
+
+#toggle-blur-btn.active {
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+  background: rgba(99, 102, 241, 0.12) !important;
 }
 
 /* ========================================

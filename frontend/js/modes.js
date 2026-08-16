@@ -255,26 +255,29 @@ export function bindModeEvents() {
     });
   }
 
+  // Toggle Blur Button in Subtitle Header
   const toggleBlurBtn = document.getElementById("toggle-blur-btn");
   if (toggleBlurBtn) {
-    toggleBlurBtn.onclick = () => toggleListeningBlur();
+    toggleBlurBtn.addEventListener("click", () => {
+      toggleBlur();
+    });
   }
 }
 
-export function toggleListeningBlur() {
-  state.listeningBlurDisabled = !state.listeningBlurDisabled;
-  document.body.classList.toggle("unblurred", state.listeningBlurDisabled);
-  
-  const label = document.getElementById("toggle-blur-label");
-  const icon = document.getElementById("toggle-blur-icon");
-  if (label && icon) {
-    if (state.listeningBlurDisabled) {
-      icon.textContent = "visibility_off";
-      label.textContent = "자막 전체 가리기 (V)";
-    } else {
-      icon.textContent = "visibility";
-      label.textContent = "자막 전체 보기 (V)";
-    }
+export function toggleBlur() {
+  const isRevealed = document.body.classList.toggle("blur-revealed");
+  const blurBtn = document.getElementById("toggle-blur-btn");
+  const blurIcon = document.getElementById("blur-icon");
+  const blurLabel = document.getElementById("blur-btn-text");
+
+  if (isRevealed) {
+    if (blurIcon) blurIcon.textContent = "visibility";
+    if (blurLabel) blurLabel.textContent = "자막 보임 (V)";
+    if (blurBtn) blurBtn.classList.add("active");
+  } else {
+    if (blurIcon) blurIcon.textContent = "visibility_off";
+    if (blurLabel) blurLabel.textContent = "자막 숨김 (V)";
+    if (blurBtn) blurBtn.classList.remove("active");
   }
 }
 

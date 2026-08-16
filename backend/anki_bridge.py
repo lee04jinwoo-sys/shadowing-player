@@ -56,7 +56,19 @@ def add_sentence_to_anki(sentence: str) -> dict:
             logger.warning("AI note completion returned 0 items. Adding card directly via AnkiConnect fallback...")
             try:
                 from config import DECK_SENTENCE, MODEL_SENTENCE
-                AnkiConnector.add_note(DECK_SENTENCE, MODEL_SENTENCE, {"문장": sentence, "해석": ""})
+                fields = {}
+                try:
+                    field_names = AnkiConnector.invoke('modelFieldNames', modelName=MODEL_SENTENCE) or []
+                    if field_names:
+                        fields[field_names[0]] = sentence
+                        for fn in field_names[1:]:
+                            fields[fn] = ""
+                    else:
+                        fields = {"문장": sentence, "해석": ""}
+                except Exception:
+                    fields = {"문장": sentence, "해석": ""}
+
+                AnkiConnector.add_note(DECK_SENTENCE, MODEL_SENTENCE, fields)
                 added_s = [sentence]
             except Exception as direct_err:
                 logger.error(f"Direct AnkiConnect fallback failed: {direct_err}")
