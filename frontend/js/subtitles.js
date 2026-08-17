@@ -78,7 +78,19 @@ export function updateActiveSubtitleUI(index) {
   const activeItem = document.getElementById(`sub-item-${index}`);
   if (activeItem) {
     activeItem.classList.add("active");
-    activeItem.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    
+    // Direct container scrollTop positioning to avoid browser smooth-scroll animation queue lag
+    const container = subtitleList;
+    if (container) {
+      const itemTop = activeItem.offsetTop;
+      const itemHeight = activeItem.offsetHeight;
+      const containerHeight = container.clientHeight;
+      const targetScroll = itemTop - (containerHeight / 2) + (itemHeight / 2);
+      
+      // Auto (instant) for high speed, smooth for normal speed
+      const behavior = state.playbackSpeed > 1.2 ? "auto" : "smooth";
+      container.scrollTo({ top: Math.max(0, targetScroll), behavior: behavior });
+    }
   }
 
   // Update video overlays

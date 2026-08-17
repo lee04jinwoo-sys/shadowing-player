@@ -18,10 +18,32 @@ const noVideoMsg = document.getElementById("no-video-msg");
 let activeAdapter = 'html5'; // 'html5' or 'youtube'
 let ytPlayer = null;
 let ytTimeUpdateInterval = null;
-let ytTimeUpdateCallbacks = [];
+let timeUpdateCallbacks = [];
 let ytPlayCallback = null;
 let ytPauseCallback = null;
 let ytReady = false;
+let rafId = null;
+
+function startTimeLoop() {
+  stopTimeLoop();
+  function loop() {
+    const timeMs = getCurrentTimeMs();
+    timeUpdateCallbacks.forEach(cb => cb(timeMs));
+    if (!isPaused()) {
+      rafId = requestAnimationFrame(loop);
+    } else {
+      rafId = null;
+    }
+  }
+  rafId = requestAnimationFrame(loop);
+}
+
+function stopTimeLoop() {
+  if (rafId) {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+}
 
 // =====================
 // HTML5 Adapter (로컬 영상)
@@ -119,9 +141,9 @@ function startYTTimePolling() {
   ytTimeUpdateInterval = setInterval(() => {
     if (ytPlayer && ytReady && ytPlayer.getCurrentTime) {
       const timeMs = ytPlayer.getCurrentTime() * 1000;
-      ytTimeUpdateCallbacks.forEach(cb => cb(timeMs));
+      timeUpdateCallbacks.forEach(cb => cb(timeMs));
     }
-  }, 100); // 100ms polling for smooth subtitle sync
+  }, 33); // 30fps polling for ultra smooth YouTube subtitle sync
 }
 
 function stopYTTimePolling() {
@@ -256,15 +278,23 @@ export function setSpeed(speed) {
 
 // --- Event Binding ---
 export function onTimeUpdate(callback) {
-  // HTML5 events
-  videoElement.addEventListener("timeupdate", () => {
-    if (activeAdapter === 'html5') {
-      callback(getCurrentTimeMs());
-    }
-  });
-  // YouTube polling callbacks
-  ytTimeUpdateCallbacks.push(callback);
+  timeUpdateCallbacks.push(callback);
 }
+
+// Attach HTML5 video listeners
+videoElement.addEventListener("timeupdate", () => {
+  if (activeAdapter === 'html5') {
+    const timeMs = getCurrentTimeMs();
+    timeUpdateCallbacks.forEach(cb => cb(timeMs));
+  }
+});
+
+videoElement.addEventListener("seeked", () => {
+  if (activeAdapter === 'html5') {
+    const timeMs = getCurrentTimeMs();
+    timeUpdateCallbacks.forEach(cb => cb(timeMs));
+  }
+});
 
 export function onPlay(callback) {
   videoElement.addEventListener("play", () => {
@@ -272,6 +302,7 @@ export function onPlay(callback) {
       state.hasPausedForShadowing = false;
       playIcon.style.display = "none";
       pauseIcon.style.display = "block";
+      startTimeLoop();
       if (callback) callback();
     }
   });
@@ -283,6 +314,7 @@ export function onPause(callback) {
     if (activeAdapter === 'html5') {
       playIcon.style.display = "block";
       pauseIcon.style.display = "none";
+      stopTimeLoop();
       if (callback) callback();
     }
   });
