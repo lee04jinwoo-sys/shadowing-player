@@ -47,6 +47,14 @@ def merge_into_sentences(subs: list) -> list:
 
         # Check if the text ends with sentence-ending punctuation (. ? !)
         cleaned_text = text_en.rstrip()
+        ends_with_punct = (
+            cleaned_text.endswith('.') or 
+            cleaned_text.endswith('?') or 
+            cleaned_text.endswith('!') or 
+            cleaned_text.endswith('."') or 
+            cleaned_text.endswith('?"') or 
+            cleaned_text.endswith('!"')
+        )
         ends_with_comma_break = (
             cleaned_text.endswith(',') or 
             cleaned_text.endswith(';') or
