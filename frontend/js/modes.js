@@ -4,7 +4,7 @@
 
 import state, { saveStateToLocal } from './state.js?v=20260816_2105';
 import { renderSubtitles, updateActiveSubtitleUI, updateSubVisibility, toggleStar, formatTime } from './subtitles.js?v=20260816_2105';
-import { addSentenceToAnki, getAIExplanation } from './api.js?v=20260816_2105';
+import { addSentenceToAnki, bulkAddSentencesToAnki, getAIExplanation } from './api.js?v=20260818_0050';
 
 // --- DOM References ---
 const modeListening = document.getElementById("mode-listening");
@@ -592,43 +592,59 @@ async function bulkExportToAnki() {
   ankiBulkExportBtn.disabled = true;
   bulkExportProgress.style.display = "block";
   bulkExportStatus.style.color = "var(--accent)";
-  const inputs = starredListContainer.querySelectorAll('.starred-sentence-input');
+  
+  const inputs = Array.from(starredListContainer.querySelectorAll('.starred-sentence-input'));
   const total = inputs.length;
-  let successCount = 0;
+  const items = [];
+  const idxList = [];
 
-  for (let i = 0; i < total; i++) {
-    const input = inputs[i];
+  inputs.forEach(input => {
     const sentence = input.value.trim();
     const idx = parseInt(input.getAttribute('data-idx'));
-    
-    bulkExportStatus.textContent = `전송 중... (${i+1}/${total})`;
-    
-    if (!sentence) continue;
+    if (sentence) {
+      const sub = state.subtitles[idx] || {};
+      items.push({
+        sentence: sentence,
+        translation: sub.text_kr || ""
+      });
+      idxList.push(idx);
+    }
+  });
 
-    try {
-      const ok = await addSentenceToAnki(sentence);
-      if (ok) {
-        successCount++;
+  if (items.length === 0) {
+    ankiBulkExportBtn.disabled = false;
+    bulkExportProgress.style.display = "none";
+    return;
+  }
+
+  bulkExportStatus.textContent = `전송 중... (0/${total})`;
+
+  try {
+    const res = await bulkAddSentencesToAnki(items);
+    if (res.success) {
+      idxList.forEach(idx => {
         state.starredSubtitles.delete(idx);
         delete state.editedStarredText[idx];
         state.extractedSubtitles.add(idx);
-        saveStateToLocal();
-        renderSubtitles();
-        input.parentElement.style.opacity = "0.3";
-        input.disabled = true;
-      }
-    } catch (err) {
-      console.error("Network error:", err);
+      });
+      saveStateToLocal();
+      renderSubtitles();
+      
+      bulkExportStatus.style.color = "var(--success)";
+      bulkExportStatus.textContent = `완료! (${res.count || items.length}/${total} 전송 성공)`;
+    } else {
+      bulkExportStatus.style.color = "var(--danger)";
+      bulkExportStatus.textContent = `오류: ${res.error || "전송 실패"}`;
     }
+  } catch (err) {
+    console.error("Bulk add error:", err);
+    bulkExportStatus.style.color = "var(--danger)";
+    bulkExportStatus.textContent = "네트워크 전송 오류 발생";
+  } finally {
+    ankiBulkExportBtn.disabled = false;
+    setTimeout(() => {
+      bulkExportProgress.style.display = "none";
+      renderStarredList();
+    }, 2500);
   }
-
-  ankiBulkExportBtn.disabled = false;
-  
-  bulkExportStatus.style.color = "var(--success)";
-  bulkExportStatus.textContent = `완료! (${successCount}/${total} 성공)`;
-  
-  setTimeout(() => {
-    bulkExportProgress.style.display = "none";
-    renderStarredList();
-  }, 3000);
 }

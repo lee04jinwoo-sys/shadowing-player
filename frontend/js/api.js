@@ -55,13 +55,23 @@ export async function launchAnki() {
   }
 }
 
-export async function addSentenceToAnki(sentence) {
+export async function addSentenceToAnki(sentence, translation = "") {
   const res = await fetch("/api/anki/add-sentence", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sentence })
+    body: JSON.stringify({ sentence, translation })
   });
   return res.ok;
+}
+
+export async function bulkAddSentencesToAnki(items) {
+  const res = await fetch("/api/anki/bulk-add", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items })
+  });
+  if (!res.ok) throw new Error("Bulk add failed");
+  return await res.json();
 }
 
 export async function getAIExplanation(sentence) {
