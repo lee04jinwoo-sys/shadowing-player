@@ -932,7 +932,7 @@ body.mode-listening:not(.blur-revealed) .subtitle-item .text-kr {
   filter: blur(5px);
   opacity: 0.35;
   transition: filter 0.2s var(--ease), opacity 0.2s var(--ease);
-  user-select: none;
+  user-select: text;
 }
 
 body.mode-listening:not(.blur-revealed) .subtitle-item:hover .text-en,
@@ -940,7 +940,7 @@ body.mode-listening:not(.blur-revealed) .subtitle-item:hover .text-kr {
   filter: blur(0);
   opacity: 1;
   transition: filter 1.2s ease-out, opacity 1.2s ease-out;
-  user-select: auto;
+  user-select: text;
 }
 
 #toggle-blur-btn.active {

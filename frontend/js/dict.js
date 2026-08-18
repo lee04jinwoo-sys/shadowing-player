@@ -2,7 +2,7 @@
 // dict.js — 인터랙티브 단어 팝업 사전 & Anki 단어 연동
 // ====================================
 
-import { lookupWord, addVocabCardToAnki } from "./api.js?v=20260818_1000";
+import { lookupWord, addVocabCardToAnki } from "./api.js?v=20260818_1140";
 
 let popoverEl = null;
 let currentWordData = null;
@@ -133,6 +133,10 @@ function bindGlobalEvents() {
             if (enEl) context = enEl.textContent;
           }
           showWordDictionary(selectedText, context, null, rect, range);
+          // Clear native selection so only our clean styled underline is shown!
+          setTimeout(() => {
+            window.getSelection().removeAllRanges();
+          }, 50);
         }
       }
     }

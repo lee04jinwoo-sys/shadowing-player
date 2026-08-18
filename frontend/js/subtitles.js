@@ -2,7 +2,7 @@
 // subtitles.js — 자막 렌더링 & 동기화
 // ====================================
 
-import state, { saveStateToLocal } from './state.js?v=20260818_1000';
+import state, { saveStateToLocal } from './state.js?v=20260818_1140';
 
 // --- DOM References ---
 const subtitleList = document.getElementById("subtitle-list");
@@ -56,6 +56,13 @@ export function renderSubtitles() {
     `;
 
     item.addEventListener("click", (e) => {
+      // 1. If user was dragging / selecting text, NEVER trigger single word click or seek!
+      const sel = window.getSelection();
+      if (sel && sel.toString().trim().length > 0) {
+        return;
+      }
+
+      // 2. Single word click
       if (e.target && e.target.classList.contains("word-token")) {
         e.stopPropagation();
         const word = e.target.getAttribute("data-word");
@@ -64,11 +71,8 @@ export function renderSubtitles() {
         }
         return;
       }
-      // If user was dragging to select text, don't seek video
-      const sel = window.getSelection();
-      if (sel && sel.toString().trim().length > 0) {
-        return;
-      }
+
+      // 3. Seek to subtitle
       if (window._seekToSubtitle) window._seekToSubtitle(idx);
     });
 

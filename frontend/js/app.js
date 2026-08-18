@@ -2,12 +2,12 @@
 // app.js — 앱 진입점 (초기화 + 이벤트 연결)
 // ====================================
 
-import state, { loadEpisodeState, saveStateToLocal, getGlobalExtracted, getGlobalCompletedEpisodes, addYouTubeToHistory, getYouTubeHistory, getLastWatched, saveLastWatched } from './state.js?v=20260818_1000';
-import * as api from './api.js?v=20260818_1000';
-import * as player from './player.js?v=20260818_1000';
-import { renderSubtitles, updateActiveSubtitleUI, clearOverlays, findActiveSubtitleIndex, toggleStar, isShortSubtitle } from './subtitles.js?v=20260818_1000';
-import { setMode, bindModeEvents, updateDictationPanel, toggleBlur } from './modes.js?v=20260818_1000';
-import { initDictionary, showWordDictionary } from './dict.js?v=20260818_1000';
+import state, { loadEpisodeState, saveStateToLocal, getGlobalExtracted, getGlobalCompletedEpisodes, addYouTubeToHistory, getYouTubeHistory, getLastWatched, saveLastWatched } from './state.js?v=20260818_1140';
+import * as api from './api.js?v=20260818_1140';
+import * as player from './player.js?v=20260818_1140';
+import { renderSubtitles, updateActiveSubtitleUI, clearOverlays, findActiveSubtitleIndex, toggleStar, isShortSubtitle } from './subtitles.js?v=20260818_1140';
+import { setMode, bindModeEvents, updateDictationPanel, toggleBlur } from './modes.js?v=20260818_1140';
+import { initDictionary, showWordDictionary } from './dict.js?v=20260818_1140';
 
 // Expose dictionary trigger for subtitle item clicks
 window._showWordDictionary = showWordDictionary;
