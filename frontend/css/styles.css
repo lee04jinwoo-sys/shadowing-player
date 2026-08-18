@@ -1159,12 +1159,13 @@ body.mode-listening:not(.blur-revealed) .subtitle-item:hover .text-kr {
   animation: spin 0.6s linear infinite;
 }
 
-.dict-meaning-row, .dict-explanation-row, .dict-synonyms-row, .dict-example-row {
+.dict-meaning-row, .dict-phrase-row, .dict-explanation-row, .dict-synonyms-row, .dict-example-row {
   display: flex;
   gap: 6px;
+  align-items: flex-start;
 }
 
-.dict-meaning-label, .dict-explanation-label, .dict-synonyms-label, .dict-example-label {
+.dict-meaning-label, .dict-phrase-label, .dict-explanation-label, .dict-synonyms-label, .dict-example-label {
   font-size: 10px;
   font-weight: 600;
   color: var(--text-muted);
@@ -1173,6 +1174,31 @@ body.mode-listening:not(.blur-revealed) .subtitle-item:hover .text-kr {
   border-radius: 3px;
   height: fit-content;
   white-space: nowrap;
+}
+
+.dict-phrase-label {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
+.dict-phrase-chip {
+  background: rgba(94, 106, 210, 0.12);
+  border: 1px solid rgba(94, 106, 210, 0.3);
+  color: var(--accent);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.dict-phrase-chip:hover {
+  background: rgba(94, 106, 210, 0.25);
+  border-color: var(--accent);
+  color: #fff;
 }
 
 .dict-meaning {

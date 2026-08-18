@@ -42,6 +42,11 @@ function createPopoverDOM() {
           <span class="dict-meaning-label">뜻</span>
           <span class="dict-meaning" id="dict-meaning-text"></span>
         </div>
+
+        <div class="dict-phrase-row" id="dict-phrase-row" style="display: none;">
+          <span class="dict-phrase-label">💡 문맥 표현</span>
+          <button class="dict-phrase-chip" id="dict-phrase-chip" title="이 숙어/표현 전체 분석하기"></button>
+        </div>
         
         <div class="dict-explanation-row" id="dict-explanation-row">
           <span class="dict-explanation-label">뉘앙스</span>
@@ -63,7 +68,7 @@ function createPopoverDOM() {
     <div class="dict-footer">
       <button class="btn primary dict-anki-btn" id="dict-anki-btn">
         <span class="material-symbols-outlined" style="font-size: 14px;">add</span>
-        Anki 단어장에 추가
+        Anki 단어/표현장에 추가
       </button>
     </div>
   `;
@@ -86,14 +91,38 @@ function createPopoverDOM() {
 }
 
 function bindGlobalEvents() {
-  // Click outside to close
+  // 1. Text drag / selection lookup for multi-word expressions
+  document.addEventListener("mouseup", (e) => {
+    if (popoverEl && popoverEl.contains(e.target)) return;
+    
+    const selection = window.getSelection();
+    const selectedText = selection.toString().trim();
+    if (selectedText && selectedText.length >= 2 && selectedText.includes(" ")) {
+      const targetContainer = e.target.closest(".subtitle-item") || e.target.closest("#overlay-en") || e.target.closest(".text-en");
+      if (targetContainer) {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          const subItem = e.target.closest(".subtitle-item");
+          let context = selectedText;
+          if (subItem) {
+            const enEl = subItem.querySelector(".text-en");
+            if (enEl) context = enEl.textContent;
+          }
+          showWordDictionary(selectedText, context, null, rect);
+        }
+      }
+    }
+  });
+
+  // 2. Click outside to close
   document.addEventListener("click", (e) => {
     if (!popoverEl || popoverEl.style.display === "none") return;
     if (popoverEl.contains(e.target) || e.target.classList.contains("word-token")) return;
     hidePopover();
   });
 
-  // ESC to close
+  // 3. ESC to close
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && popoverEl && popoverEl.style.display !== "none") {
       hidePopover();
@@ -101,13 +130,16 @@ function bindGlobalEvents() {
   });
 }
 
-export async function showWordDictionary(word, context, targetElement) {
+let currentContext = "";
+
+export async function showWordDictionary(word, context, targetElement, customRect = null) {
   if (!popoverEl) initDictionary();
 
-  const cleanWord = word.replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "");
+  const cleanWord = word.replace(/^[^a-zA-Z0-9'-]+|[^a-zA-Z0-9'-]+$/g, "").trim();
   if (!cleanWord || cleanWord.length < 2) return;
 
   currentWordData = null;
+  currentContext = context || cleanWord;
 
   // Set initial UI
   document.getElementById("dict-word-text").textContent = cleanWord;
@@ -116,26 +148,27 @@ export async function showWordDictionary(word, context, targetElement) {
   document.getElementById("dict-pos-badge").className = "dict-pos-badge";
   document.getElementById("dict-loading").style.display = "flex";
   document.getElementById("dict-content").style.display = "none";
+  document.getElementById("dict-phrase-row").style.display = "none";
 
   const ankiBtn = document.getElementById("dict-anki-btn");
   ankiBtn.disabled = false;
-  ankiBtn.innerHTML = "<span class=\"material-symbols-outlined\" style=\"font-size: 14px;\">add</span> Anki 단어장에 추가";
+  ankiBtn.innerHTML = "<span class=\"material-symbols-outlined\" style=\"font-size: 14px;\">add</span> Anki 단어/표현장에 추가";
   ankiBtn.style.backgroundColor = "";
   ankiBtn.style.color = "";
 
-  // Position Popover near targetElement
-  positionPopover(targetElement);
+  // Position Popover
+  positionPopover(targetElement, customRect);
 
   popoverEl.style.display = "block";
 
   try {
-    const data = await lookupWord(cleanWord, context);
+    const data = await lookupWord(cleanWord, currentContext);
     currentWordData = data;
     renderWordDetails(data);
   } catch (err) {
     document.getElementById("dict-loading").style.display = "none";
     document.getElementById("dict-content").style.display = "block";
-    document.getElementById("dict-meaning-text").textContent = "단어 정보를 불러오지 못했습니다.";
+    document.getElementById("dict-meaning-text").textContent = "단어/표현 정보를 불러오지 못했습니다.";
   }
 }
 
@@ -144,7 +177,7 @@ function renderWordDetails(data) {
   document.getElementById("dict-content").style.display = "block";
 
   document.getElementById("dict-word-text").textContent = data.word || data.lemma || "";
-  document.getElementById("dict-phonetic-text").textContent = data.phonetic || "";
+  document.getElementById("dict-phonetic-text").textContent = (data.phonetic && data.phonetic !== "-") ? data.phonetic : "";
   
   const posBadge = document.getElementById("dict-pos-badge");
   if (data.pos) {
@@ -156,6 +189,20 @@ function renderWordDetails(data) {
   }
 
   document.getElementById("dict-meaning-text").textContent = data.meaning || "";
+
+  // Related Phrase Chip
+  const phraseRow = document.getElementById("dict-phrase-row");
+  const phraseChip = document.getElementById("dict-phrase-chip");
+  if (data.related_phrase && data.related_phrase.phrase && data.related_phrase.phrase.toLowerCase() !== (data.word || "").toLowerCase()) {
+    phraseChip.textContent = `${data.related_phrase.phrase} (${data.related_phrase.meaning || ""})`;
+    phraseChip.onclick = (e) => {
+      e.stopPropagation();
+      showWordDictionary(data.related_phrase.phrase, currentContext, null, popoverEl.getBoundingClientRect());
+    };
+    phraseRow.style.display = "flex";
+  } else {
+    phraseRow.style.display = "none";
+  }
 
   const expRow = document.getElementById("dict-explanation-row");
   if (data.explanation) {
@@ -183,10 +230,10 @@ function renderWordDetails(data) {
   }
 }
 
-function positionPopover(targetElement) {
-  const rect = targetElement.getBoundingClientRect();
-  const popoverWidth = 320;
-  const popoverHeight = 240;
+function positionPopover(targetElement, customRect = null) {
+  const rect = customRect || (targetElement ? targetElement.getBoundingClientRect() : { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0, bottom: window.innerHeight / 2 });
+  const popoverWidth = 330;
+  const popoverHeight = 250;
 
   let left = rect.left + (rect.width / 2) - (popoverWidth / 2);
   let top = rect.bottom + 8; // default below target
@@ -199,7 +246,7 @@ function positionPopover(targetElement) {
 
   // If bottom exceeds viewport, place above
   if (top + popoverHeight > window.innerHeight - 10) {
-    top = rect.top - popoverHeight - 8;
+    top = Math.max(10, rect.top - popoverHeight - 8);
   }
 
   popoverEl.style.left = `${Math.max(10, left)}px`;

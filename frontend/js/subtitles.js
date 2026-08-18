@@ -64,6 +64,11 @@ export function renderSubtitles() {
         }
         return;
       }
+      // If user was dragging to select text, don't seek video
+      const sel = window.getSelection();
+      if (sel && sel.toString().trim().length > 0) {
+        return;
+      }
       if (window._seekToSubtitle) window._seekToSubtitle(idx);
     });
 

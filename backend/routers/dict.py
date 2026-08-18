@@ -85,9 +85,9 @@ class WordLookupRequest(BaseModel):
 @router.api_route("/lookup", methods=["POST", "GET", "HEAD"])
 def lookup_word(req: WordLookupRequest):
     raw_word = req.word.strip()
-    cleaned_word = re.sub(r'^[^\w]+|[^\w]+$', '', raw_word).lower()
+    cleaned_word = re.sub(r"^[^\w\s'-]+|[^\w\s'-]+$", "", raw_word).strip().lower()
     if not cleaned_word:
-        raise HTTPException(status_code=400, detail="Invalid word")
+        raise HTTPException(status_code=400, detail="Invalid word or expression")
 
     cache_key = f"{cleaned_word}"
     cached = get_cached_word(cache_key)
@@ -102,16 +102,17 @@ def lookup_word(req: WordLookupRequest):
         client = genai.Client(api_key=api_key)
         
         prompt = f"""
-Analyze the English word or expression "{cleaned_word}" based on this dialogue context: "{req.context}".
+Analyze the English word or multi-word expression "{cleaned_word}" based on this dialogue context: "{req.context}".
 Return a JSON object with these EXACT keys:
-- "word": original word/phrase (standardized)
-- "lemma": base/dictionary form (e.g. "running" -> "run")
-- "phonetic": IPA pronunciation (e.g. "/ˈrʌnɪŋ/")
+- "word": original word/phrase
+- "lemma": base/dictionary form (e.g. "pull a fast one on A" or "run")
+- "phonetic": IPA pronunciation (or "-" if it is a multi-word phrase)
 - "pos": primary part of speech ("n", "v", "adj", "adv", "idiom", "prep", "conj")
-- "meaning": clear Korean meaning tailored to context (e.g. "당황스러운, 쑥스러운")
+- "meaning": clear Korean meaning tailored to context (e.g. "당황스러운, 쑥스러운" or "~를 속이다")
 - "explanation": a concise 1-2 sentence Korean explanation of the nuance and practical usage.
-- "synonyms": list of 2-4 English synonym words (strings)
+- "synonyms": list of 2-4 English synonym words or expressions
 - "example": a short, natural practical English example sentence with Korean translation in parentheses.
+- "related_phrase": if this single word is part of a larger idiom or phrasal verb in the context dialogue, return {{"phrase": "...", "meaning": "..."}}, otherwise null.
 
 Keep your response strictly valid JSON.
 """
