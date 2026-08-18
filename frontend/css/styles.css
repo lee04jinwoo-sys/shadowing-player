@@ -1036,7 +1036,7 @@ body.mode-listening:not(.blur-revealed) .subtitle-item:hover .text-kr {
   cursor: pointer;
   border-radius: 3px;
   padding: 0 1px;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-bottom 0.15s ease;
 }
 
 .word-token:hover {
@@ -1045,6 +1045,27 @@ body.mode-listening:not(.blur-revealed) .subtitle-item:hover .text-kr {
   text-decoration: underline;
   text-decoration-thickness: 1.5px;
   text-underline-offset: 2px;
+}
+
+.word-token.token-selected,
+.word-token.token-highlighted {
+  background-color: rgba(94, 106, 210, 0.3) !important;
+  color: #ffffff !important;
+  border-bottom: 2px solid var(--accent) !important;
+  text-decoration: none !important;
+  border-radius: 2px;
+}
+
+/* Custom Text Selection Highlight with Underline */
+.text-en::selection,
+.word-token::selection,
+#overlay-en::selection {
+  background: rgba(94, 106, 210, 0.35);
+  color: #ffffff;
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 
 .dict-popover {

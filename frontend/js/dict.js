@@ -90,6 +90,29 @@ function createPopoverDOM() {
   });
 }
 
+function clearSelectedTokens() {
+  document.querySelectorAll(".word-token.token-selected").forEach(el => {
+    el.classList.remove("token-selected");
+  });
+}
+
+function highlightRangeTokens(range) {
+  clearSelectedTokens();
+  if (!range) return;
+  const container = range.commonAncestorContainer;
+  const root = container.nodeType === Node.ELEMENT_NODE ? container : container.parentElement;
+  if (!root) return;
+  
+  const subItem = root.closest(".subtitle-item") || document.getElementById("overlay-en");
+  if (!subItem) return;
+  const tokens = subItem.querySelectorAll(".word-token");
+  tokens.forEach(token => {
+    if (range.intersectsNode(token)) {
+      token.classList.add("token-selected");
+    }
+  });
+}
+
 function bindGlobalEvents() {
   // 1. Text drag / selection lookup for multi-word expressions
   document.addEventListener("mouseup", (e) => {
@@ -97,7 +120,7 @@ function bindGlobalEvents() {
     
     const selection = window.getSelection();
     const selectedText = selection.toString().trim();
-    if (selectedText && selectedText.length >= 2 && selectedText.includes(" ")) {
+    if (selectedText && selectedText.length >= 2) {
       const targetContainer = e.target.closest(".subtitle-item") || e.target.closest("#overlay-en") || e.target.closest(".text-en");
       if (targetContainer) {
         const range = selection.getRangeAt(0);
@@ -109,7 +132,7 @@ function bindGlobalEvents() {
             const enEl = subItem.querySelector(".text-en");
             if (enEl) context = enEl.textContent;
           }
-          showWordDictionary(selectedText, context, null, rect);
+          showWordDictionary(selectedText, context, null, rect, range);
         }
       }
     }
@@ -132,11 +155,18 @@ function bindGlobalEvents() {
 
 let currentContext = "";
 
-export async function showWordDictionary(word, context, targetElement, customRect = null) {
+export async function showWordDictionary(word, context, targetElement, customRect = null, range = null) {
   if (!popoverEl) initDictionary();
 
   const cleanWord = word.replace(/^[^a-zA-Z0-9'-]+|[^a-zA-Z0-9'-]+$/g, "").trim();
   if (!cleanWord || cleanWord.length < 2) return;
+
+  clearSelectedTokens();
+  if (targetElement && targetElement.classList.contains("word-token")) {
+    targetElement.classList.add("token-selected");
+  } else if (range) {
+    highlightRangeTokens(range);
+  }
 
   currentWordData = null;
   currentContext = context || cleanWord;
@@ -254,6 +284,7 @@ function positionPopover(targetElement, customRect = null) {
 }
 
 export function hidePopover() {
+  clearSelectedTokens();
   if (popoverEl) {
     popoverEl.style.display = "none";
   }
