@@ -142,7 +142,7 @@ def add_sentence_to_anki(sentence: str, translation: str = "") -> dict:
             "deckName": DECK_SENTENCE,
             "modelName": MODEL_SENTENCE,
             "fields": fields,
-            "options": {"allowDuplicate": True}
+            "options": {"allowDuplicate": False}
         }
         note_id = AnkiConnector.invoke("addNote", note=note)
         return {"success": True, "note_id": note_id, "added": [sentence], "translation": translation}
@@ -181,7 +181,7 @@ def bulk_add_sentences_to_anki(items: list) -> dict:
                 "해설": t,
                 "소리": sound_tag
             },
-            "options": {"allowDuplicate": True}
+            "options": {"allowDuplicate": False}
         }
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
