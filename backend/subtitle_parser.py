@@ -208,7 +208,8 @@ def parse_dual_srt(en_path: str, ko_path: str) -> list:
     for sub in en_subs:
         start_ms = sub.start
         end_ms = sub.end
-        en_text = sub.plaintext.replace('\n', ' ').strip()
+        raw_en = getattr(sub, 'plaintext', str(sub.text))
+        en_text = re.sub(r'<[^>]+>', '', raw_en).replace('\n', ' ').strip()
         
         # Advance j to discard ko_subs that are too far in the past
         while j < kr_len and ko_subs[j].end < start_ms - 1500:
@@ -227,7 +228,8 @@ def parse_dual_srt(en_path: str, ko_path: str) -> list:
             
             if overlap > best_overlap and overlap > 0:
                 best_overlap = overlap
-                ko_text = k_sub.plaintext.replace('\n', ' ').strip()
+                raw_ko = getattr(k_sub, 'plaintext', str(k_sub.text))
+                ko_text = re.sub(r'<[^>]+>', '', raw_ko).replace('\n', ' ').strip()
             k += 1
                 
         final_subs.append({

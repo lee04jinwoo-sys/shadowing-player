@@ -2,7 +2,7 @@
 // dict.js — 인터랙티브 단어 팝업 사전 & Anki 단어 연동
 // ====================================
 
-import { lookupWord, addVocabCardToAnki } from "./api.js?v=20260818_0950";
+import { lookupWord, addVocabCardToAnki } from "./api.js?v=20260818_1000";
 
 let popoverEl = null;
 let currentWordData = null;

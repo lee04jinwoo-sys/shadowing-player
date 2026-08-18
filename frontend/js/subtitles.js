@@ -2,7 +2,7 @@
 // subtitles.js — 자막 렌더링 & 동기화
 // ====================================
 
-import state, { saveStateToLocal } from './state.js?v=20260816_2105';
+import state, { saveStateToLocal } from './state.js?v=20260818_1000';
 
 // --- DOM References ---
 const subtitleList = document.getElementById("subtitle-list");
@@ -14,7 +14,8 @@ const progressBarFill = document.getElementById("progress-bar-fill");
 // --- Tokenize Words for Interactive Dictionary ---
 export function formatEnglishWords(text) {
   if (!text) return "";
-  return text.split(/(\s+|[^\w\s'-]+)/).map(token => {
+  const clean = text.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim();
+  return clean.split(/(\s+|[^\w\s'-]+)/).map(token => {
     const trimmed = token.trim();
     const isWord = /^[a-zA-Z0-9'-]+$/.test(trimmed);
     if (isWord && trimmed.length > 0) {

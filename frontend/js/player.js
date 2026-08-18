@@ -3,7 +3,7 @@
 // ====================================
 // HTML5 <video> 와 YouTube IFrame Player를 통합 인터페이스로 제공
 
-import state from './state.js?v=20260816_2105';
+import state from './state.js?v=20260818_1000';
 
 // --- DOM References ---
 const videoElement = document.getElementById("video-element");
