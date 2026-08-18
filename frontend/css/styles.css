@@ -1258,3 +1258,24 @@ body.mode-listening:not(.blur-revealed) .subtitle-item:hover .text-kr {
   gap: 4px;
   border-radius: var(--radius-sm);
 }
+
+/* Editable fields inside dictionary popover */
+.dict-editable {
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin: -1px -4px;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+  cursor: text;
+  word-break: break-word;
+}
+
+.dict-editable:hover {
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(94, 106, 210, 0.35);
+}
+
+.dict-editable:focus {
+  outline: none;
+  background: rgba(94, 106, 210, 0.12);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}

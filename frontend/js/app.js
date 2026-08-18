@@ -6,11 +6,12 @@ import state, { loadEpisodeState, saveStateToLocal, getGlobalExtracted, getGloba
 import * as api from './api.js?v=20260818_1140';
 import * as player from './player.js?v=20260818_1140';
 import { renderSubtitles, updateActiveSubtitleUI, clearOverlays, findActiveSubtitleIndex, toggleStar, isShortSubtitle } from './subtitles.js?v=20260818_1140';
-import { setMode, bindModeEvents, updateDictationPanel, toggleBlur } from './modes.js?v=20260818_1140';
+import { setMode, bindModeEvents, updateDictationPanel, toggleBlur, renderStarredList } from './modes.js?v=20260818_1140';
 import { initDictionary, showWordDictionary } from './dict.js?v=20260818_1140';
 
-// Expose dictionary trigger for subtitle item clicks
+// Expose global triggers
 window._showWordDictionary = showWordDictionary;
+window._renderStarredList = renderStarredList;
 
 // --- DOM References ---
 const episodeSelect = document.getElementById("episode-select");

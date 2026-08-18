@@ -3,6 +3,7 @@
 // ====================================
 
 import { lookupWord, addVocabCardToAnki } from "./api.js?v=20260818_1140";
+import { saveVocabItem } from "./state.js?v=20260818_1140";
 
 let popoverEl = null;
 let currentWordData = null;
@@ -23,13 +24,13 @@ function createPopoverDOM() {
   popoverEl.innerHTML = `
     <div class="dict-header">
       <div class="dict-word-group">
-        <span class="dict-word" id="dict-word-text"></span>
+        <span class="dict-word dict-editable" id="dict-word-text" contenteditable="true" spellcheck="false" title="클릭하여 단어/숙어 표기 수정"></span>
         <button class="dict-audio-btn" id="dict-audio-btn" title="발음 듣기">
           <span class="material-symbols-outlined">volume_up</span>
         </button>
-        <span class="dict-phonetic" id="dict-phonetic-text"></span>
+        <span class="dict-phonetic dict-editable" id="dict-phonetic-text" contenteditable="true" spellcheck="false" title="클릭하여 발음기호 수정"></span>
       </div>
-      <span class="dict-pos-badge" id="dict-pos-badge"></span>
+      <span class="dict-pos-badge dict-editable" id="dict-pos-badge" contenteditable="true" spellcheck="false" title="클릭하여 품사 수정"></span>
     </div>
     
     <div class="dict-body">
@@ -40,7 +41,7 @@ function createPopoverDOM() {
       <div class="dict-content" id="dict-content" style="display: none;">
         <div class="dict-meaning-row">
           <span class="dict-meaning-label">뜻</span>
-          <span class="dict-meaning" id="dict-meaning-text"></span>
+          <span class="dict-meaning dict-editable" id="dict-meaning-text" contenteditable="true" spellcheck="false" title="클릭하여 뜻 수정"></span>
         </div>
 
         <div class="dict-phrase-row" id="dict-phrase-row" style="display: none;">
@@ -50,17 +51,17 @@ function createPopoverDOM() {
         
         <div class="dict-explanation-row" id="dict-explanation-row">
           <span class="dict-explanation-label">뉘앙스</span>
-          <span class="dict-explanation" id="dict-explanation-text"></span>
+          <span class="dict-explanation dict-editable" id="dict-explanation-text" contenteditable="true" spellcheck="false" title="클릭하여 뉘앙스/설명 수정"></span>
         </div>
 
         <div class="dict-synonyms-row" id="dict-synonyms-row">
           <span class="dict-synonyms-label">유의어</span>
-          <span class="dict-synonyms" id="dict-synonyms-text"></span>
+          <span class="dict-synonyms dict-editable" id="dict-synonyms-text" contenteditable="true" spellcheck="false" title="클릭하여 유의어 수정"></span>
         </div>
 
         <div class="dict-example-row" id="dict-example-row">
           <span class="dict-example-label">예문</span>
-          <span class="dict-example" id="dict-example-text"></span>
+          <span class="dict-example dict-editable" id="dict-example-text" contenteditable="true" spellcheck="false" title="클릭하여 예문 수정"></span>
         </div>
       </div>
     </div>
@@ -78,14 +79,14 @@ function createPopoverDOM() {
   // Audio Play
   document.getElementById("dict-audio-btn").addEventListener("click", (e) => {
     e.stopPropagation();
-    if (!currentWordData || !currentWordData.word) return;
-    playWordPronunciation(currentWordData.word);
+    const wordEl = document.getElementById("dict-word-text");
+    const word = wordEl ? wordEl.textContent.trim() : (currentWordData?.word || "");
+    if (word) playWordPronunciation(word);
   });
 
   // Anki Save
   document.getElementById("dict-anki-btn").addEventListener("click", async (e) => {
     e.stopPropagation();
-    if (!currentWordData) return;
     await saveWordToAnki();
   });
 }
@@ -305,7 +306,21 @@ function playWordPronunciation(word) {
 }
 
 async function saveWordToAnki() {
-  if (!currentWordData) return;
+  const wordEl = document.getElementById("dict-word-text");
+  const meaningEl = document.getElementById("dict-meaning-text");
+  const posEl = document.getElementById("dict-pos-badge");
+  const synonymsEl = document.getElementById("dict-synonyms-text");
+  const exampleEl = document.getElementById("dict-example-text");
+  const explanationEl = document.getElementById("dict-explanation-text");
+
+  const wordVal = wordEl ? wordEl.textContent.trim() : (currentWordData?.word || "");
+  const meaningVal = meaningEl ? meaningEl.textContent.trim() : (currentWordData?.meaning || "");
+  const posVal = posEl ? posEl.textContent.trim().toLowerCase() : (currentWordData?.pos || "");
+  const synonymsVal = synonymsEl ? synonymsEl.textContent.trim() : (currentWordData?.synonyms || "");
+  const exampleVal = exampleEl ? exampleEl.textContent.trim() : (currentWordData?.example || "");
+  const explanationVal = explanationEl ? explanationEl.textContent.trim() : (currentWordData?.explanation || "");
+
+  if (!wordVal || !meaningVal) return;
 
   const ankiBtn = document.getElementById("dict-anki-btn");
   ankiBtn.disabled = true;
@@ -313,29 +328,40 @@ async function saveWordToAnki() {
 
   try {
     const payload = {
-      word: currentWordData.word || currentWordData.lemma,
-      meaning: currentWordData.meaning || "",
-      pos: currentWordData.pos || "",
-      synonyms: Array.isArray(currentWordData.synonyms) ? currentWordData.synonyms.join(", ") : (currentWordData.synonyms || ""),
-      example: currentWordData.example || "",
-      explanation: currentWordData.explanation || ""
+      word: wordVal,
+      meaning: meaningVal,
+      pos: posVal,
+      synonyms: synonymsVal,
+      example: exampleVal,
+      explanation: explanationVal
     };
+
+    // Save to local storage for Anki extraction mode
+    saveVocabItem({
+      ...payload,
+      extracted: false
+    });
 
     const res = await addVocabCardToAnki(payload);
     if (res.success) {
+      saveVocabItem({ ...payload, extracted: true, note_id: res.note_id });
       ankiBtn.innerHTML = "<span class=\"material-symbols-outlined\" style=\"font-size: 14px;\">check</span> Anki 저장 완료!";
       ankiBtn.style.backgroundColor = "var(--success)";
       ankiBtn.style.borderColor = "var(--success)";
+      
+      // Update Anki export panel if open
+      if (window._renderStarredList) window._renderStarredList();
+
       setTimeout(() => {
         hidePopover();
       }, 1500);
     } else if (res.duplicate) {
-      ankiBtn.innerHTML = "⚠️ 이미 Anki에 등록된 단어";
+      ankiBtn.innerHTML = "⚠️ 이미 Anki에 등록된 단어/표현";
       ankiBtn.style.backgroundColor = "var(--bg-tertiary)";
       ankiBtn.style.color = "var(--accent)";
       setTimeout(() => {
         ankiBtn.disabled = false;
-        ankiBtn.innerHTML = "<span class=\"material-symbols-outlined\" style=\"font-size: 14px;\">add</span> Anki 단어장에 추가";
+        ankiBtn.innerHTML = "<span class=\"material-symbols-outlined\" style=\"font-size: 14px;\">add</span> Anki 단어/표현장에 추가";
         ankiBtn.style.backgroundColor = "";
         ankiBtn.style.color = "";
       }, 2500);
@@ -343,14 +369,14 @@ async function saveWordToAnki() {
       ankiBtn.textContent = `저장 실패: ${res.error || "오류"}`;
       setTimeout(() => {
         ankiBtn.disabled = false;
-        ankiBtn.innerHTML = "<span class=\"material-symbols-outlined\" style=\"font-size: 14px;\">add</span> Anki 단어장에 추가";
+        ankiBtn.innerHTML = "<span class=\"material-symbols-outlined\" style=\"font-size: 14px;\">add</span> Anki 단어/표현장에 추가";
       }, 2500);
     }
   } catch (err) {
     ankiBtn.textContent = "전송 오류";
     setTimeout(() => {
       ankiBtn.disabled = false;
-      ankiBtn.innerHTML = "<span class=\"material-symbols-outlined\" style=\"font-size: 14px;\">add</span> Anki 단어장에 추가";
+      ankiBtn.innerHTML = "<span class=\"material-symbols-outlined\" style=\"font-size: 14px;\">add</span> Anki 단어/표현장에 추가";
     }, 2500);
   }
 }

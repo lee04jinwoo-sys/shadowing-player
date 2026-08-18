@@ -457,6 +457,7 @@ export function compareStrings(correct, typed) {
 }
 
 // --- Starred List (Anki Extraction) ---
+// --- Starred & Vocab List (Anki Extraction) ---
 export function renderStarredList() {
   if (!starredCount || !starredListContainer) return;
   
@@ -465,113 +466,229 @@ export function renderStarredList() {
     state.editedStarredText[parseInt(input.getAttribute('data-idx'))] = input.value;
   });
 
-  starredCount.textContent = state.starredSubtitles.size;
-  starredListContainer.innerHTML = "";
-  
-  const exportApkgBtn = document.getElementById("export-apkg-btn");
-  const exportCsvBtn = document.getElementById("export-csv-btn");
+  const { getSavedVocab, updateSavedVocabItem, deleteSavedVocabItem } = state;
+  import('./state.js?v=20260818_1140').then(stateMod => {
+    const savedVocab = stateMod.getSavedVocab ? stateMod.getSavedVocab() : [];
+    const totalCount = state.starredSubtitles.size + savedVocab.length;
+    starredCount.textContent = totalCount;
+    starredListContainer.innerHTML = "";
 
-  if (state.starredSubtitles.size === 0) {
-    starredListContainer.innerHTML = `
-      <div style="text-align: center; color: var(--text-secondary); margin-top: 40px;">
-        보관된 문장이 없습니다.<br>맞추기 모드에서 '⭐ 보관 (A)' 버튼을 눌러 문장을 모아보세요.
-      </div>
-    `;
-    if (ankiBulkExportBtn) ankiBulkExportBtn.disabled = true;
-    return;
-  }
-  
-  if (ankiBulkExportBtn) ankiBulkExportBtn.disabled = false;
-  if (exportApkgBtn) exportApkgBtn.disabled = false;
-  if (exportCsvBtn) exportCsvBtn.disabled = false;
-  
-  const sortedIndices = Array.from(state.starredSubtitles).sort((a, b) => a - b);
-  
-  sortedIndices.forEach((idx) => {
-    const sub = state.subtitles[idx] || {};
-    const customText = state.editedStarredText[idx] !== undefined 
-      ? state.editedStarredText[idx] 
-      : (sub.text_en || "");
-    
-    const timeStr = (sub.start_ms !== undefined && sub.end_ms !== undefined)
-      ? `${formatTime(sub.start_ms)} ~ ${formatTime(sub.end_ms)}`
-      : `문장 #${idx + 1}`;
+    const exportApkgBtn = document.getElementById("export-apkg-btn");
+    const exportCsvBtn = document.getElementById("export-csv-btn");
 
-    const item = document.createElement("div");
-    item.className = "anki-card";
-    item.style.marginBottom = "0";
-    
-    item.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px;">
-        <span style="font-size: 11px; color: var(--text-secondary); font-family: var(--font-subtitle); white-space: nowrap;">
-          ${timeStr}
-        </span>
-        <div style="display: flex; gap: 4px; align-items: center; flex-shrink: 0;">
-          <button class="btn extract-star-btn" data-idx="${idx}" style="height: 24px; padding: 0 8px; font-size: 11px; background: rgba(34, 197, 94, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); border-radius: 4px; white-space: nowrap; cursor: pointer;">개별 추출</button>
-          <button class="btn remove-star-btn" data-idx="${idx}" style="height: 24px; padding: 0 8px; font-size: 11px; background: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); border-radius: 4px; white-space: nowrap; cursor: pointer;">삭제</button>
+    if (totalCount === 0) {
+      starredListContainer.innerHTML = `
+        <div style="text-align: center; color: var(--text-secondary); margin-top: 40px; font-size: 13px; line-height: 1.6;">
+          보관된 문장이나 단어가 없습니다.<br>
+          자막에서 단어를 클릭/드래그하거나, 맞추기 모드에서 '⭐ 보관' 버튼을 눌러보세요.
         </div>
-      </div>
-      <textarea class="starred-sentence-input" data-idx="${idx}" rows="2" style="width: 100%; background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; font-size: 14px; font-family: var(--font-ui); outline: none; resize: vertical;">${customText}</textarea>
-      ${sub.text_kr ? `<div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">${sub.text_kr}</div>` : ''}
-    `;
+      `;
+      if (ankiBulkExportBtn) ankiBulkExportBtn.disabled = true;
+      return;
+    }
     
-    item.querySelector('.starred-sentence-input').addEventListener('input', (e) => {
-      state.editedStarredText[idx] = e.target.value;
-      saveStateToLocal();
-    });
-    
-    item.querySelector('.remove-star-btn').addEventListener('click', () => {
-      state.starredSubtitles.delete(idx);
-      delete state.editedStarredText[idx];
-      saveStateToLocal();
-      renderStarredList();
-      // Re-render subtitles to remove star border
-      import('./subtitles.js').then(module => module.renderSubtitles());
-    });
-    
-    item.querySelector('.extract-star-btn').addEventListener('click', async (e) => {
-      const btn = e.target;
-      if (!state.ankiConnected) {
-        btn.textContent = "Anki 연결 필요";
-        setTimeout(() => btn.textContent = "개별 추출", 2000);
-        return;
-      }
-      
-      const input = item.querySelector('.starred-sentence-input');
-      const sentence = input.value.trim();
-      if (!sentence) return;
-      
-      btn.disabled = true;
-      btn.textContent = "추출 중...";
-      
-      try {
-        const { addSentenceToAnki } = await import('./api.js');
-        const ok = await addSentenceToAnki(sentence);
-        if (ok) {
+    if (ankiBulkExportBtn) ankiBulkExportBtn.disabled = false;
+    if (exportApkgBtn) exportApkgBtn.disabled = false;
+    if (exportCsvBtn) exportCsvBtn.disabled = false;
+
+    // 1. Render Starred Sentences
+    if (state.starredSubtitles.size > 0) {
+      const sentenceHeader = document.createElement("div");
+      sentenceHeader.style.cssText = "font-size: 12px; font-weight: 600; color: var(--accent); margin: 8px 0 6px 0; display: flex; align-items: center; gap: 4px;";
+      sentenceHeader.innerHTML = `<span class="material-symbols-outlined" style="font-size: 15px;">format_quote</span> 보관된 문장 (${state.starredSubtitles.size})`;
+      starredListContainer.appendChild(sentenceHeader);
+
+      const sortedIndices = Array.from(state.starredSubtitles).sort((a, b) => a - b);
+      sortedIndices.forEach((idx) => {
+        const sub = state.subtitles[idx] || {};
+        const customText = state.editedStarredText[idx] !== undefined 
+          ? state.editedStarredText[idx] 
+          : (sub.text_en || "");
+        
+        const timeStr = (sub.start_ms !== undefined && sub.end_ms !== undefined)
+          ? `${formatTime(sub.start_ms)} ~ ${formatTime(sub.end_ms)}`
+          : `문장 #${idx + 1}`;
+
+        const item = document.createElement("div");
+        item.className = "anki-card";
+        item.style.marginBottom = "8px";
+        
+        item.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px;">
+            <span style="font-size: 11px; color: var(--text-secondary); font-family: var(--font-subtitle); white-space: nowrap;">
+              ${timeStr}
+            </span>
+            <div style="display: flex; gap: 4px; align-items: center; flex-shrink: 0;">
+              <button class="btn extract-star-btn" data-idx="${idx}" style="height: 24px; padding: 0 8px; font-size: 11px; background: rgba(34, 197, 94, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); border-radius: 4px; white-space: nowrap; cursor: pointer;">개별 추출</button>
+              <button class="btn remove-star-btn" data-idx="${idx}" style="height: 24px; padding: 0 8px; font-size: 11px; background: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); border-radius: 4px; white-space: nowrap; cursor: pointer;">삭제</button>
+            </div>
+          </div>
+          <textarea class="starred-sentence-input" data-idx="${idx}" rows="2" style="width: 100%; background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; font-size: 14px; font-family: var(--font-ui); outline: none; resize: vertical;">${customText}</textarea>
+          ${sub.text_kr ? `<div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">${sub.text_kr}</div>` : ''}
+        `;
+        
+        item.querySelector('.starred-sentence-input').addEventListener('input', (e) => {
+          state.editedStarredText[idx] = e.target.value;
+          saveStateToLocal();
+        });
+        
+        item.querySelector('.remove-star-btn').addEventListener('click', () => {
           state.starredSubtitles.delete(idx);
           delete state.editedStarredText[idx];
-          state.extractedSubtitles.add(idx);
           saveStateToLocal();
-          
-          btn.textContent = "성공!";
-          input.disabled = true;
-          item.style.opacity = "0.3";
-          
+          renderStarredList();
           import('./subtitles.js').then(module => module.renderSubtitles());
-          setTimeout(() => renderStarredList(), 1000);
-        } else {
-          btn.textContent = "실패";
-          btn.disabled = false;
-          setTimeout(() => btn.textContent = "개별 추출", 2000);
-        }
-      } catch (err) {
-        btn.textContent = "오류";
-        btn.disabled = false;
-        setTimeout(() => btn.textContent = "개별 추출", 2000);
-      }
-    });
-    
-    starredListContainer.appendChild(item);
+        });
+        
+        item.querySelector('.extract-star-btn').addEventListener('click', async (e) => {
+          const btn = e.target;
+          if (!state.ankiConnected) {
+            btn.textContent = "Anki 연결 필요";
+            setTimeout(() => btn.textContent = "개별 추출", 2000);
+            return;
+          }
+          
+          const input = item.querySelector('.starred-sentence-input');
+          const sentence = input.value.trim();
+          if (!sentence) return;
+          
+          btn.disabled = true;
+          btn.textContent = "추출 중...";
+          
+          try {
+            const { addSentenceToAnki } = await import('./api.js');
+            const ok = await addSentenceToAnki(sentence);
+            if (ok) {
+              state.starredSubtitles.delete(idx);
+              delete state.editedStarredText[idx];
+              state.extractedSubtitles.add(idx);
+              saveStateToLocal();
+              
+              btn.textContent = "성공!";
+              input.disabled = true;
+              item.style.opacity = "0.3";
+              
+              import('./subtitles.js').then(module => module.renderSubtitles());
+              setTimeout(() => renderStarredList(), 1000);
+            } else {
+              btn.textContent = "실패";
+              btn.disabled = false;
+              setTimeout(() => btn.textContent = "개별 추출", 2000);
+            }
+          } catch (err) {
+            btn.textContent = "오류";
+            btn.disabled = false;
+            setTimeout(() => btn.textContent = "개별 추출", 2000);
+          }
+        });
+        
+        starredListContainer.appendChild(item);
+      });
+    }
+
+    // 2. Render Saved Vocabulary
+    if (savedVocab.length > 0) {
+      const vocabHeader = document.createElement("div");
+      vocabHeader.style.cssText = "font-size: 12px; font-weight: 600; color: #a78bfa; margin: 16px 0 6px 0; display: flex; align-items: center; gap: 4px;";
+      vocabHeader.innerHTML = `<span class="material-symbols-outlined" style="font-size: 15px;">menu_book</span> 보관된 단어 & 표현 (${savedVocab.length})`;
+      starredListContainer.appendChild(vocabHeader);
+
+      savedVocab.forEach((v) => {
+        const vCard = document.createElement("div");
+        vCard.className = "anki-card";
+        vCard.style.marginBottom = "8px";
+        vCard.style.border = "1px solid rgba(167, 139, 250, 0.25)";
+
+        vCard.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 6px; flex: 1;">
+              <input type="text" class="vocab-word-input" value="${v.word || ''}" style="font-weight: 600; font-size: 14px; color: var(--text-primary); background: transparent; border: 1px dashed rgba(255,255,255,0.15); border-radius: 4px; padding: 2px 6px; width: 100%; outline: none;" placeholder="단어/표현">
+            </div>
+            <div style="display: flex; gap: 4px; align-items: center; flex-shrink: 0;">
+              <button class="btn extract-vocab-btn" style="height: 24px; padding: 0 8px; font-size: 11px; background: rgba(167, 139, 250, 0.15); color: #c4b5fd; border: 1px solid rgba(167, 139, 250, 0.3); border-radius: 4px; white-space: nowrap; cursor: pointer;">${v.extracted ? 'Anki 재전송' : 'Anki 전송'}</button>
+              <button class="btn remove-vocab-btn" style="height: 24px; padding: 0 8px; font-size: 11px; background: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); border-radius: 4px; white-space: nowrap; cursor: pointer;">삭제</button>
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 6px;">
+            <input type="text" class="vocab-meaning-input" value="${v.meaning || ''}" style="width: 100%; font-size: 13px; font-weight: 500; color: #34d399; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 8px; outline: none;" placeholder="뜻/해석">
+          </div>
+
+          <div style="margin-bottom: 6px;">
+            <textarea class="vocab-exp-input" rows="2" style="width: 100%; font-size: 12px; color: var(--text-secondary); background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 8px; outline: none; resize: vertical;" placeholder="3단계 설명 (뉘앙스/유의어 비교/콜로케이션)">${v.explanation || ''}</textarea>
+          </div>
+
+          <div>
+            <input type="text" class="vocab-ex-input" value="${v.example || ''}" style="width: 100%; font-size: 11px; font-style: italic; color: var(--text-muted); background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 6px; padding: 4px 8px; outline: none;" placeholder="예문">
+          </div>
+        `;
+
+        const saveChanges = () => {
+          stateMod.updateSavedVocabItem(v.id, {
+            word: vCard.querySelector('.vocab-word-input').value.trim(),
+            meaning: vCard.querySelector('.vocab-meaning-input').value.trim(),
+            explanation: vCard.querySelector('.vocab-exp-input').value.trim(),
+            example: vCard.querySelector('.vocab-ex-input').value.trim(),
+          });
+        };
+
+        vCard.querySelectorAll('input, textarea').forEach(inp => {
+          inp.addEventListener('input', saveChanges);
+        });
+
+        vCard.querySelector('.remove-vocab-btn').addEventListener('click', () => {
+          stateMod.deleteSavedVocabItem(v.id);
+          renderStarredList();
+        });
+
+        vCard.querySelector('.extract-vocab-btn').addEventListener('click', async (e) => {
+          const btn = e.target;
+          if (!state.ankiConnected) {
+            btn.textContent = "Anki 연결 필요";
+            setTimeout(() => btn.textContent = "Anki 전송", 2000);
+            return;
+          }
+
+          saveChanges();
+          const word = vCard.querySelector('.vocab-word-input').value.trim();
+          const meaning = vCard.querySelector('.vocab-meaning-input').value.trim();
+          const explanation = vCard.querySelector('.vocab-exp-input').value.trim();
+          const example = vCard.querySelector('.vocab-ex-input').value.trim();
+
+          if (!word || !meaning) return;
+
+          btn.disabled = true;
+          btn.textContent = "전송 중...";
+
+          try {
+            const { addVocabCardToAnki } = await import('./api.js');
+            const res = await addVocabCardToAnki({
+              word, meaning, explanation, example, pos: v.pos || "", synonyms: v.synonyms || ""
+            });
+            if (res.success) {
+              stateMod.updateSavedVocabItem(v.id, { extracted: true });
+              btn.textContent = "완료!";
+              btn.style.color = "#34d399";
+              setTimeout(() => {
+                btn.disabled = false;
+                btn.textContent = "Anki 재전송";
+                btn.style.color = "";
+              }, 2000);
+            } else {
+              btn.textContent = res.error || "실패";
+              btn.disabled = false;
+              setTimeout(() => btn.textContent = "Anki 전송", 2500);
+            }
+          } catch (err) {
+            btn.textContent = "오류";
+            btn.disabled = false;
+            setTimeout(() => btn.textContent = "Anki 전송", 2000);
+          }
+        });
+
+        starredListContainer.appendChild(vCard);
+      });
+    }
   });
 }
 

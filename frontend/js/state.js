@@ -146,3 +146,46 @@ export function getLastWatched() {
     return null;
   }
 }
+
+// --- Saved Vocab Management ---
+let savedVocabList = [];
+try {
+  const saved = localStorage.getItem('shadowing_saved_vocab');
+  if (saved) savedVocabList = JSON.parse(saved);
+} catch (e) {
+  savedVocabList = [];
+}
+
+export function getSavedVocab() {
+  return savedVocabList;
+}
+
+export function saveVocabItem(item) {
+  const cleanWord = (item.word || '').trim();
+  if (!cleanWord) return;
+  const existingIdx = savedVocabList.findIndex(v => v.word.toLowerCase() === cleanWord.toLowerCase());
+  if (existingIdx !== -1) {
+    savedVocabList[existingIdx] = { ...savedVocabList[existingIdx], ...item, word: cleanWord, updatedAt: Date.now() };
+  } else {
+    savedVocabList.unshift({
+      id: 'vocab_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      createdAt: Date.now(),
+      ...item,
+      word: cleanWord
+    });
+  }
+  localStorage.setItem('shadowing_saved_vocab', JSON.stringify(savedVocabList));
+}
+
+export function updateSavedVocabItem(id, updates) {
+  const idx = savedVocabList.findIndex(v => v.id === id);
+  if (idx !== -1) {
+    savedVocabList[idx] = { ...savedVocabList[idx], ...updates, updatedAt: Date.now() };
+    localStorage.setItem('shadowing_saved_vocab', JSON.stringify(savedVocabList));
+  }
+}
+
+export function deleteSavedVocabItem(id) {
+  savedVocabList = savedVocabList.filter(v => v.id !== id);
+  localStorage.setItem('shadowing_saved_vocab', JSON.stringify(savedVocabList));
+}
