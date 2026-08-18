@@ -26,7 +26,7 @@ app.add_middleware(
 )
 
 # Import routers
-from backend.routers import video, subtitle, anki, ai, youtube, export
+from backend.routers import video, subtitle, anki, ai, youtube, export, dict as dict_router
 
 # Include routers
 app.include_router(video.router)
@@ -35,6 +35,7 @@ app.include_router(anki.router)
 app.include_router(ai.router)
 app.include_router(youtube.router)
 app.include_router(export.router)
+app.include_router(dict_router.router)
 
 # Mount static files (CRITICAL for CSS/JS to work)
 app.mount("/css", StaticFiles(directory="frontend/css"), name="css")

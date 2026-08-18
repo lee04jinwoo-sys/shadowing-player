@@ -84,6 +84,25 @@ export async function getAIExplanation(sentence) {
   return await res.json();
 }
 
+export async function lookupWord(word, context = "") {
+  const res = await fetch("/api/dict/lookup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ word, context })
+  });
+  if (!res.ok) throw new Error("단어 조회 실패");
+  return await res.json();
+}
+
+export async function addVocabCardToAnki(data) {
+  const res = await fetch("/api/dict/add-to-anki", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+  return await res.json();
+}
+
 // --- YouTube API ---
 export async function fetchYouTubeInfo(url) {
   const res = await fetch("/api/youtube/info", {

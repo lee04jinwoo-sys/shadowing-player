@@ -11,6 +11,19 @@ const overlayKr = document.getElementById("overlay-kr");
 const progressText = document.getElementById("progress-text");
 const progressBarFill = document.getElementById("progress-bar-fill");
 
+// --- Tokenize Words for Interactive Dictionary ---
+export function formatEnglishWords(text) {
+  if (!text) return "";
+  return text.split(/(\s+|[^\w\s'-]+)/).map(token => {
+    const trimmed = token.trim();
+    const isWord = /^[a-zA-Z0-9'-]+$/.test(trimmed);
+    if (isWord && trimmed.length > 0) {
+      return `<span class="word-token" data-word="${trimmed}">${token}</span>`;
+    }
+    return token;
+  }).join("");
+}
+
 // --- Render Subtitle List ---
 export function renderSubtitles() {
   subtitleList.innerHTML = "";
@@ -37,11 +50,19 @@ export function renderSubtitles() {
 
     item.innerHTML = `
       <div class="time-tag">${timeStr}${extractedBadge}</div>
-      <div class="text-en">${sub.text_en}</div>
+      <div class="text-en">${formatEnglishWords(sub.text_en)}</div>
       ${sub.text_kr ? `<div class="text-kr">${sub.text_kr}</div>` : ''}
     `;
 
-    item.addEventListener("click", () => {
+    item.addEventListener("click", (e) => {
+      if (e.target && e.target.classList.contains("word-token")) {
+        e.stopPropagation();
+        const word = e.target.getAttribute("data-word");
+        if (word && window._showWordDictionary) {
+          window._showWordDictionary(word, sub.text_en, e.target);
+        }
+        return;
+      }
       if (window._seekToSubtitle) window._seekToSubtitle(idx);
     });
 
@@ -95,7 +116,7 @@ export function updateActiveSubtitleUI(index) {
 
   // Update video overlays
   if (state.showEnSub && sub.text_en && !state.dictationModeActive) {
-    overlayEn.textContent = sub.text_en;
+    overlayEn.innerHTML = formatEnglishWords(sub.text_en);
     overlayEn.style.display = "inline-block";
   } else {
     overlayEn.style.display = "none";

@@ -2,11 +2,15 @@
 // app.js — 앱 진입점 (초기화 + 이벤트 연결)
 // ====================================
 
-import state, { loadEpisodeState, saveStateToLocal, getGlobalExtracted, getGlobalCompletedEpisodes, addYouTubeToHistory, getYouTubeHistory, getLastWatched, saveLastWatched } from './state.js?v=20260816_2105';
-import * as api from './api.js?v=20260816_2105';
-import * as player from './player.js?v=20260816_2105';
-import { renderSubtitles, updateActiveSubtitleUI, clearOverlays, findActiveSubtitleIndex, toggleStar, isShortSubtitle } from './subtitles.js?v=20260816_2105';
-import { setMode, bindModeEvents, updateDictationPanel, toggleBlur } from './modes.js?v=20260816_2105';
+import state, { loadEpisodeState, saveStateToLocal, getGlobalExtracted, getGlobalCompletedEpisodes, addYouTubeToHistory, getYouTubeHistory, getLastWatched, saveLastWatched } from './state.js?v=20260818_1000';
+import * as api from './api.js?v=20260818_1000';
+import * as player from './player.js?v=20260818_1000';
+import { renderSubtitles, updateActiveSubtitleUI, clearOverlays, findActiveSubtitleIndex, toggleStar, isShortSubtitle } from './subtitles.js?v=20260818_1000';
+import { setMode, bindModeEvents, updateDictationPanel, toggleBlur } from './modes.js?v=20260818_1000';
+import { initDictionary, showWordDictionary } from './dict.js?v=20260818_1000';
+
+// Expose dictionary trigger for subtitle item clicks
+window._showWordDictionary = showWordDictionary;
 
 // --- DOM References ---
 const episodeSelect = document.getElementById("episode-select");
@@ -33,16 +37,19 @@ let sourceMode = 'local'; // 'local' or 'youtube'
 init();
 
 async function init() {
-  // 1. Bind events IMMEDIATELY so buttons, tabs, shortcuts are 100% responsive right away
+  // 1. Initialize interactive popup dictionary
+  initDictionary();
+
+  // 2. Bind events IMMEDIATELY so buttons, tabs, shortcuts are 100% responsive right away
   bindEvents();
   
-  // 2. Set initial mode to Listening mode (apply blur)
+  // 3. Set initial mode to Listening mode (apply blur)
   const listeningBtn = document.getElementById("mode-listening");
   if (listeningBtn) setMode(listeningBtn);
   
   loadYouTubeHistory();
   
-  // 3. Check Anki status in background
+  // 4. Check Anki status in background
   checkAnkiStatus();
   setInterval(checkAnkiStatus, 5000);
   
