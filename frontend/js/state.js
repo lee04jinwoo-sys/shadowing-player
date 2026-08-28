@@ -5,6 +5,7 @@
 // --- Persistent State (localStorage) ---
 let globalStarred = {};
 let globalEdits = {};
+let globalTranslations = {};
 let globalExtracted = {};
 let globalCompletedEpisodes = new Set();
 
@@ -27,6 +28,12 @@ try {
       globalEdits = parsed;
     }
   }
+
+  const savedTrans = localStorage.getItem('shadowing_translations');
+  if (savedTrans) {
+    const parsed = JSON.parse(savedTrans);
+    if (typeof parsed === 'object') globalTranslations = parsed;
+  }
   
   const savedExtracted = localStorage.getItem('shadowing_extracted');
   if (savedExtracted) {
@@ -45,6 +52,7 @@ const state = {
   // Per-episode state (loaded when episode changes)
   starredSubtitles: new Set(),
   editedStarredText: {},
+  editedStarredTranslation: {},
   extractedSubtitles: new Set(),
   
   // Player state
@@ -74,10 +82,12 @@ export function saveStateToLocal() {
     const epKey = state.currentEpisode.ep_key;
     globalStarred[epKey] = Array.from(state.starredSubtitles);
     globalEdits[epKey] = state.editedStarredText;
+    globalTranslations[epKey] = state.editedStarredTranslation;
     globalExtracted[epKey] = Array.from(state.extractedSubtitles);
     
     localStorage.setItem('shadowing_starred', JSON.stringify(globalStarred));
     localStorage.setItem('shadowing_edits', JSON.stringify(globalEdits));
+    localStorage.setItem('shadowing_translations', JSON.stringify(globalTranslations));
     localStorage.setItem('shadowing_extracted', JSON.stringify(globalExtracted));
   } catch (e) {
     console.error("Failed to save state", e);
@@ -87,6 +97,7 @@ export function saveStateToLocal() {
 export function loadEpisodeState(epKey) {
   state.starredSubtitles = new Set(globalStarred[epKey] || []);
   state.editedStarredText = globalEdits[epKey] || {};
+  state.editedStarredTranslation = globalTranslations[epKey] || {};
   state.extractedSubtitles = new Set(globalExtracted[epKey] || []);
 }
 

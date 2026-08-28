@@ -9,43 +9,78 @@ import re
 import logging
 import urllib.request
 from backend.subtitle_parser import merge_into_sentences
+from backend.app_dirs import SUBTITLE_CACHE_DIR
 
 logger = logging.getLogger(__name__)
 
-CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "cache")
+CACHE_DIR = str(SUBTITLE_CACHE_DIR)
 os.makedirs(CACHE_DIR, exist_ok=True)
 
 
+import urllib.parse
+
+
 def extract_video_id(url: str) -> str | None:
-    """YouTube URL에서 video ID를 추출"""
-    patterns = [
-        r'(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/)([a-zA-Z0-9_-]{11})',
-        r'youtube\.com/shorts/([a-zA-Z0-9_-]{11})',
-    ]
-    for pat in patterns:
-        m = re.search(pat, url)
-        if m:
-            return m.group(1)
+    """YouTube URL 또는 비디오 ID에서 11자리 video_id를 완벽하게 추출"""
+    if not url:
+        return None
+    url = url.strip()
+
+    # 1. Plain 11-char video ID (e.g. "dQw4w9WgXcQ")
+    if re.fullmatch(r'[a-zA-Z0-9_-]{11}', url):
+        return url
+
+    try:
+        parsed = urllib.parse.urlparse(url)
+        # 2. query param 'v' (e.g. youtube.com/watch?v=xxx, youtube.com/watch?feature=shared&v=xxx)
+        qs = urllib.parse.parse_qs(parsed.query)
+        if 'v' in qs and qs['v'] and len(qs['v'][0]) == 11:
+            return qs['v'][0]
+
+        # 3. Path-based IDs: youtu.be/xxx, /shorts/xxx, /live/xxx, /embed/xxx, /v/xxx
+        path_parts = [p for p in parsed.path.split('/') if p]
+        if 'youtu.be' in parsed.netloc and path_parts:
+            vid = path_parts[0][:11]
+            if re.fullmatch(r'[a-zA-Z0-9_-]{11}', vid):
+                return vid
+
+        for prefix in ['shorts', 'live', 'embed', 'v']:
+            if prefix in path_parts:
+                idx = path_parts.index(prefix)
+                if idx + 1 < len(path_parts):
+                    vid = path_parts[idx + 1][:11]
+                    if re.fullmatch(r'[a-zA-Z0-9_-]{11}', vid):
+                        return vid
+    except Exception:
+        pass
+
+    # 4. Fallback regex search anywhere in URL
+    match = re.search(r'(?:v=|\/)([0-9A-Za-z_-]{11})(?:\?|&|\/|$)', url)
+    if match:
+        return match.group(1)
+
     return None
 
 
 def fetch_youtube_info(url: str) -> dict:
     """영상 메타데이터 (제목, ID, 길이, 썸네일) 반환"""
     import yt_dlp
-    
+
     video_id = extract_video_id(url)
     if not video_id:
-        return {"success": False, "error": "Invalid YouTube URL"}
-    
+        return {"success": False, "error": "올바른 YouTube 영상 링크가 아닙니다."}
+
+    canonical_url = f"https://www.youtube.com/watch?v={video_id}"
+
     ydl_opts = {
         'quiet': True,
         'no_warnings': True,
         'skip_download': True,
     }
-    
+
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+            info = ydl.extract_info(canonical_url, download=False)
             return {
                 "success": True,
                 "video_id": video_id,
@@ -243,3 +278,77 @@ def _vtt_time_to_ms(time_str: str) -> int:
         m, s = parts
         return int(m) * 60000 + int(float(s) * 1000)
     return 0
+
+
+def search_youtube(query: str, max_results: int = 16) -> list:
+    """
+    YouTube 영상 검색 (yt-dlp extract_flat 활용)
+    반환: [{ video_id, title, channel, duration, duration_str, thumbnail, views }]
+    """
+    if not query or not query.strip():
+        query = "TED-Ed english"
+    
+    query = query.strip()
+    
+    # If user pasted a direct YouTube URL into the search box, extract its info directly
+    vid = extract_video_id(query)
+    if vid:
+        info = fetch_youtube_info(query)
+        if info.get("success"):
+            dur = info.get("duration", 0) or 0
+            mins = int(dur) // 60
+            secs = int(dur) % 60
+            return [{
+                "video_id": vid,
+                "title": info.get("title", "YouTube Video"),
+                "channel": info.get("channel", ""),
+                "duration": dur,
+                "duration_str": f"{mins:02d}:{secs:02d}" if dur else "",
+                "thumbnail": info.get("thumbnail") or f"https://i.ytimg.com/vi/{vid}/hqdefault.jpg",
+                "views": 0,
+            }]
+
+    import yt_dlp
+
+    ydl_opts = {
+        'quiet': True,
+        'no_warnings': True,
+        'skip_download': True,
+        'extract_flat': 'in_playlist',
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            res = ydl.extract_info(f"ytsearch{max_results}:{query}", download=False)
+            entries = res.get("entries", []) if res else []
+            
+            results = []
+            for item in entries:
+                if not item:
+                    continue
+                v_id = item.get("id") or item.get("url")
+                if not v_id or len(v_id) != 11:
+                    continue
+                
+                duration = item.get("duration") or 0
+                mins = int(duration) // 60
+                secs = int(duration) % 60
+                dur_str = f"{mins:02d}:{secs:02d}" if duration else ""
+                
+                thumb = item.get("thumbnail")
+                if not thumb or not thumb.startswith("http"):
+                    thumb = f"https://i.ytimg.com/vi/{v_id}/hqdefault.jpg"
+
+                results.append({
+                    "video_id": v_id,
+                    "title": item.get("title", "Unknown"),
+                    "channel": item.get("uploader") or item.get("channel") or "",
+                    "duration": duration,
+                    "duration_str": dur_str,
+                    "thumbnail": thumb,
+                    "views": item.get("view_count") or 0,
+                })
+            return results
+    except Exception as e:
+        logger.error(f"YouTube search error: {e}")
+        return []

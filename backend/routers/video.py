@@ -6,9 +6,9 @@ from backend.services.episode_service import get_episodes, find_episode
 router = APIRouter(prefix="/api")
 
 @router.api_route("/files", methods=["GET", "HEAD"])
-def get_episodes_api():
+def get_episodes_api(refresh: int = 0):
     try:
-        return get_episodes()
+        return get_episodes(force_refresh=(refresh == 1))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -4,11 +4,13 @@ import json
 import logging
 import pysubs2
 
+from backend.app_dirs import SUBTITLE_CACHE_DIR
+
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "cache")
+CACHE_DIR = str(SUBTITLE_CACHE_DIR)
 os.makedirs(CACHE_DIR, exist_ok=True)
 
 def merge_into_sentences(subs: list) -> list:

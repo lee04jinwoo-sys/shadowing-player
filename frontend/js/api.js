@@ -2,11 +2,12 @@
 // api.js — 백엔드 API 호출 함수 모음
 // ====================================
 
-export async function fetchEpisodeList() {
+export async function fetchEpisodeList(forceRefresh = false) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 6000);
   try {
-    const res = await fetch("/api/files", { signal: controller.signal });
+    const url = forceRefresh ? "/api/files?refresh=1" : "/api/files";
+    const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timeoutId);
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return await res.json();
@@ -74,6 +75,19 @@ export async function bulkAddSentencesToAnki(items) {
   return await res.json();
 }
 
+export async function bulkAddVocabToAnki(items) {
+  const res = await fetch("/api/anki/bulk-add-vocab", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items })
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "단어 일괄 Anki 전송 실패");
+  }
+  return await res.json();
+}
+
 export async function getAIExplanation(sentence) {
   const res = await fetch("/api/ai/explain", {
     method: "POST",
@@ -110,12 +124,74 @@ export async function fetchYouTubeInfo(url) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ url })
   });
-  if (!res.ok) throw new Error("YouTube 정보 가져오기 실패");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "올바른 YouTube 영상 링크(11자리 비디오 ID)가 아닙니다.");
+  }
   return await res.json();
 }
 
 export async function fetchYouTubeSubtitles(videoId) {
   const res = await fetch(`/api/youtube/subtitles/${videoId}`);
+  return await res.json();
+}
+
+export async function searchYouTube(query, limit = 16) {
+  const res = await fetch(`/api/youtube/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+  if (!res.ok) throw new Error("YouTube 검색 실패");
+  const data = await res.json();
+  return data.results || [];
+}
+
+export async function fetchUserSubscriptions() {
+  const res = await fetch("/api/youtube/subscriptions");
+  if (!res.ok) throw new Error("구독 채널 목록 조회 실패");
+  return await res.json();
+}
+
+export async function fetchChannelVideos(channelId, title = "", limit = 12) {
+  const res = await fetch(`/api/youtube/subscriptions/channel/${encodeURIComponent(channelId)}?title=${encodeURIComponent(title)}&limit=${limit}`);
+  if (!res.ok) throw new Error("채널 영상 목록 조회 실패");
+  const data = await res.json();
+  return data.results || [];
+}
+
+// --- Google Auth API ---
+export async function getGoogleAuthStatus() {
+  const res = await fetch("/api/auth/google/status");
+  return await res.json();
+}
+
+export async function getGoogleAuthUrl() {
+  const res = await fetch("/api/auth/google/url");
+  return await res.json();
+}
+
+export async function saveGoogleDirectToken(token) {
+  const res = await fetch("/api/auth/google/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ access_token: token })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Google 토큰 등록 실패");
+  }
+  return await res.json();
+}
+
+export async function saveGoogleCredentials(clientId, clientSecret) {
+  const res = await fetch("/api/auth/google/credentials", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ client_id: clientId, client_secret: clientSecret })
+  });
+  if (!res.ok) throw new Error("Google OAuth 설정 저장 실패");
+  return await res.json();
+}
+
+export async function logoutGoogle() {
+  const res = await fetch("/api/auth/google/logout", { method: "POST" });
   return await res.json();
 }
 
@@ -155,3 +231,34 @@ export async function exportCsv(items, deckName = "Shadowing Sentences") {
   a.remove();
   window.URL.revokeObjectURL(url);
 }
+
+// --- Settings API ---
+export async function fetchSettings() {
+  const res = await fetch("/api/settings/");
+  if (!res.ok) throw new Error("설정 불러오기 실패");
+  return await res.json();
+}
+
+export async function saveSettings(data) {
+  const res = await fetch("/api/settings/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error("설정 저장 실패");
+  return await res.json();
+}
+
+export async function fetchLogPath() {
+  const res = await fetch("/api/settings/log-path");
+  if (!res.ok) throw new Error("로그 경로 조회 실패");
+  return await res.json();
+}
+
+export async function selectFolder() {
+  const res = await fetch("/api/settings/select-folder", { method: "POST" });
+  if (!res.ok) throw new Error("폴더 선택 대화상자 호출 실패");
+  return await res.json();
+}
+
+

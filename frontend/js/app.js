@@ -2,12 +2,13 @@
 // app.js — 앱 진입점 (초기화 + 이벤트 연결)
 // ====================================
 
-import state, { loadEpisodeState, saveStateToLocal, getGlobalExtracted, getGlobalCompletedEpisodes, addYouTubeToHistory, getYouTubeHistory, getLastWatched, saveLastWatched } from './state.js?v=20260818_1140';
-import * as api from './api.js?v=20260818_1140';
-import * as player from './player.js?v=20260818_1140';
-import { renderSubtitles, updateActiveSubtitleUI, clearOverlays, findActiveSubtitleIndex, toggleStar, isShortSubtitle } from './subtitles.js?v=20260818_1140';
-import { setMode, bindModeEvents, updateDictationPanel, toggleBlur, renderStarredList } from './modes.js?v=20260818_1140';
-import { initDictionary, showWordDictionary } from './dict.js?v=20260818_1140';
+import state, { loadEpisodeState, saveStateToLocal, getGlobalExtracted, getGlobalCompletedEpisodes, addYouTubeToHistory, getYouTubeHistory, getLastWatched, saveLastWatched } from './state.js';
+import * as api from './api.js';
+import * as player from './player.js';
+import { renderSubtitles, updateActiveSubtitleUI, clearOverlays, findActiveSubtitleIndex, toggleStar, isShortSubtitle } from './subtitles.js';
+import { setMode, bindModeEvents, updateDictationPanel, toggleBlur, renderStarredList } from './modes.js';
+import { initDictionary, showWordDictionary } from './dict.js';
+import { initSettingsModal, openSettingsModal } from './settings.js';
 
 // Expose global triggers
 window._showWordDictionary = showWordDictionary;
@@ -17,7 +18,9 @@ window._renderStarredList = renderStarredList;
 const episodeSelect = document.getElementById("episode-select");
 const subtitleSearchBtn = document.getElementById("subtitle-search-btn");
 const episodeCompleteBtn = document.getElementById("episode-complete-btn");
+const ankiStatusBtn = document.getElementById("anki-status-btn");
 const ankiStatusDot = document.getElementById("anki-status-dot");
+const ankiStatusLabel = document.getElementById("anki-status-label");
 const progressBarContainer = document.getElementById("progress-bar-container");
 const abLoopBtn = document.getElementById("ab-loop-btn");
 const dictationInput = document.getElementById("dictation-input");
@@ -25,21 +28,40 @@ const dictationInput = document.getElementById("dictation-input");
 // YouTube DOM
 const sourceLocalBtn = document.getElementById("source-local-btn");
 const sourceYoutubeBtn = document.getElementById("source-youtube-btn");
+const sourceExploreBtn = document.getElementById("source-explore-btn");
 const localControls = document.getElementById("local-controls");
 const youtubeControls = document.getElementById("youtube-controls");
 const youtubeUrlInput = document.getElementById("youtube-url-input");
 const youtubeLoadBtn = document.getElementById("youtube-load-btn");
 const youtubeHistorySelect = document.getElementById("youtube-history-select");
 
+// Main Sections
+const videoSection = document.querySelector(".video-section");
+const sidebar = document.querySelector(".sidebar");
+const exploreSection = document.getElementById("explore-section");
+const exploreSearchInput = document.getElementById("explore-search-input");
+const exploreSearchBtn = document.getElementById("explore-search-btn");
+const exploreTagsContainer = document.getElementById("explore-tags-container");
+const exploreVideoGrid = document.getElementById("explore-video-grid");
+const exploreLoadingSpinner = document.getElementById("explore-loading-spinner");
+
+// Subscriptions DOM
+const exploreSubChipsContainer = document.getElementById("explore-sub-chips-container");
+const googleQuickConnectBtn = document.getElementById("google-quick-connect-btn");
+const googleQuickStatusText = document.getElementById("google-quick-status-text");
+
 // --- Source Mode ---
-let sourceMode = 'local'; // 'local' or 'youtube'
+let sourceMode = 'local'; // 'local', 'youtube', 'explore'
 
 // --- Initialize ---
 init();
 
 async function init() {
-  // 1. Initialize interactive popup dictionary
+  // 1. Initialize interactive popup dictionary & Settings modal
   initDictionary();
+  initSettingsModal();
+  window._reloadEpisodes = fetchEpisodes;
+  window._refreshSubscriptions = loadSubscriptionsBar;
 
   // 2. Bind events IMMEDIATELY so buttons, tabs, shortcuts are 100% responsive right away
   bindEvents();
@@ -49,6 +71,7 @@ async function init() {
   if (listeningBtn) setMode(listeningBtn);
   
   loadYouTubeHistory();
+  loadSubscriptionsBar();
   
   // 4. Check Anki status in background
   checkAnkiStatus();
@@ -86,9 +109,9 @@ async function init() {
 }
 
 // --- API Calls ---
-async function fetchEpisodes() {
+async function fetchEpisodes(forceRefresh = false) {
   try {
-    const list = await api.fetchEpisodeList();
+    const list = await api.fetchEpisodeList(forceRefresh);
     state.episodes = Array.isArray(list) ? list : [];
     const globalExtracted = getGlobalExtracted() || {};
     const globalCompleted = (typeof getGlobalCompletedEpisodes === 'function')
@@ -108,8 +131,8 @@ async function fetchEpisodes() {
       const isCompleted = globalCompleted && typeof globalCompleted.has === 'function' && globalCompleted.has(ep.ep_key);
       
       let prefix = "";
-      if (isCompleted) prefix += "✅ ";
-      if (hasExtracted) prefix += "📝 ";
+      if (isCompleted) prefix += "[완료] ";
+      if (hasExtracted) prefix += "[추출] ";
       
       option.textContent = `${prefix}${ep.ep_key.toUpperCase()} - ${ep.video_filename} (${ep.format.toUpperCase()})`;
       episodeSelect.appendChild(option);
@@ -120,9 +143,13 @@ async function fetchEpisodes() {
   }
 }
 
-async function checkAnkiStatus() {
+async function checkAnkiStatus(showFeedback = false) {
+  if (showFeedback && ankiStatusLabel) ankiStatusLabel.textContent = "확인 중...";
   state.ankiConnected = await api.checkAnkiConnection();
-  ankiStatusDot.classList.toggle("connected", state.ankiConnected);
+  if (ankiStatusDot) ankiStatusDot.classList.toggle("connected", state.ankiConnected);
+  if (ankiStatusLabel) {
+    ankiStatusLabel.textContent = state.ankiConnected ? "Anki 연결됨" : "Anki 연결";
+  }
 }
 
 // --- Load Episode (Local) ---
@@ -165,10 +192,10 @@ async function loadEpisode(epKey) {
     const globalCompleted = getGlobalCompletedEpisodes ? getGlobalCompletedEpisodes() : new Set();
     const isCompleted = globalCompleted.has(epKey);
     if (isCompleted) {
-      episodeCompleteBtn.textContent = "✅ 완료됨 (취소)";
+      episodeCompleteBtn.textContent = "완료됨 (취소)";
       episodeCompleteBtn.classList.add("completed");
     } else {
-      episodeCompleteBtn.textContent = "✅ 완료 표시";
+      episodeCompleteBtn.textContent = "완료 표시";
       episodeCompleteBtn.classList.remove("completed");
     }
   } catch (err) {
@@ -182,7 +209,7 @@ async function loadYouTubeVideo(url) {
   const subtitleList = document.getElementById("subtitle-list");
   subtitleList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">유튜브 영상 로딩 중...</div>';
   
-  youtubeLoadBtn.innerHTML = "⏳ 로딩...";
+  youtubeLoadBtn.innerHTML = "로딩 중...";
   youtubeLoadBtn.disabled = true;
   
   try {
@@ -229,20 +256,51 @@ async function loadYouTubeVideo(url) {
     episodeCompleteBtn.style.display = "none";
     
     // Show success
-    youtubeLoadBtn.innerHTML = "✅ 완료!";
+    youtubeLoadBtn.innerHTML = "완료!";
     youtubeLoadBtn.style.color = "var(--success)";
     setTimeout(() => {
-      youtubeLoadBtn.innerHTML = "▶️ 로드";
+      youtubeLoadBtn.innerHTML = "로드";
       youtubeLoadBtn.style.color = "";
       youtubeLoadBtn.disabled = false;
     }, 2000);
     
   } catch (err) {
     console.error("Failed to load YouTube video:", err);
-    subtitleList.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--danger);">유튜브 로드 실패: ${err.message}</div>`;
-    youtubeLoadBtn.innerHTML = "⚠️ 실패";
+
+    const cleanTerm = url.replace(/https?:\/\/(www\.)?youtube\.com\/watch\?v=/i, '')
+                         .replace(/https?:\/\/youtu\.be\//i, '')
+                         .trim();
+
+    let hintHtml = `<div style="padding: 20px; text-align: center; color: var(--danger);">유튜브 로드 실패: ${err.message}</div>`;
+
+    if (cleanTerm && cleanTerm.length < 11) {
+      hintHtml += `
+        <div style="padding: 14px 18px; text-align: center; color: var(--text-secondary); font-size: 13px; background: var(--bg-surface-2); margin: 0 16px; border-radius: var(--radius-md); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;">
+          <div style="font-weight: 500; color: var(--text-primary);">
+            내 컴퓨터의 로컬 영상(Modern Family 등)을 보시려면 상단 <strong>[로컬]</strong> 탭을 클릭해 주세요.
+          </div>
+          <button class="btn primary" id="auto-explore-hint-btn" style="height: 32px; font-size: 12px; align-self: center; display: inline-flex; align-items: center; gap: 6px;">
+            <span class="material-symbols-outlined" style="font-size: 16px;">search</span>
+            <span>'${cleanTerm}' 유튜브 탐색하기</span>
+          </button>
+        </div>
+      `;
+    }
+
+    subtitleList.innerHTML = hintHtml;
+
+    const autoExploreBtn = document.getElementById("auto-explore-hint-btn");
+    if (autoExploreBtn) {
+      autoExploreBtn.addEventListener("click", () => {
+        switchSource('explore');
+        if (exploreSearchInput) exploreSearchInput.value = cleanTerm;
+        performExploreSearch(cleanTerm);
+      });
+    }
+
+    youtubeLoadBtn.innerHTML = "실패";
     setTimeout(() => {
-      youtubeLoadBtn.innerHTML = "▶️ 로드";
+      youtubeLoadBtn.innerHTML = "로드";
       youtubeLoadBtn.disabled = false;
     }, 3000);
   }
@@ -267,13 +325,224 @@ function switchSource(mode) {
   if (mode === 'local') {
     sourceLocalBtn.classList.add('active');
     sourceYoutubeBtn.classList.remove('active');
+    if (sourceExploreBtn) sourceExploreBtn.classList.remove('active');
+    
+    if (videoSection) videoSection.style.display = "flex";
+    if (sidebar) sidebar.style.display = "flex";
+    if (exploreSection) exploreSection.style.display = "none";
+
     localControls.style.display = "flex";
     youtubeControls.style.display = "none";
-  } else {
+  } else if (mode === 'youtube') {
     sourceLocalBtn.classList.remove('active');
     sourceYoutubeBtn.classList.add('active');
+    if (sourceExploreBtn) sourceExploreBtn.classList.remove('active');
+
+    if (videoSection) videoSection.style.display = "flex";
+    if (sidebar) sidebar.style.display = "flex";
+    if (exploreSection) exploreSection.style.display = "none";
+
     localControls.style.display = "none";
     youtubeControls.style.display = "flex";
+  } else if (mode === 'explore') {
+    sourceLocalBtn.classList.remove('active');
+    sourceYoutubeBtn.classList.remove('active');
+    if (sourceExploreBtn) sourceExploreBtn.classList.add('active');
+
+    if (videoSection) videoSection.style.display = "none";
+    if (sidebar) sidebar.style.display = "none";
+    if (exploreSection) exploreSection.style.display = "flex";
+
+    localControls.style.display = "none";
+    youtubeControls.style.display = "flex";
+
+    // Auto-search default tag if grid is empty
+    if (exploreVideoGrid && exploreVideoGrid.children.length === 0) {
+      const activeTag = exploreTagsContainer ? exploreTagsContainer.querySelector(".explore-tag-chip.active") : null;
+      const initialQuery = activeTag ? activeTag.dataset.query : "TED-Ed english";
+      performExploreSearch(initialQuery);
+    }
+  }
+}
+
+// --- YouTube In-App Explore Search ---
+let isSearchingYouTube = false;
+
+async function performExploreSearch(query) {
+  if (!query || !query.trim() || isSearchingYouTube) return;
+  const q = query.trim();
+  
+  // If user entered full YouTube URL directly, load it immediately
+  if (q.includes("youtube.com") || q.includes("youtu.be")) {
+    switchSource('youtube');
+    youtubeUrlInput.value = q;
+    loadYouTubeVideo(q);
+    return;
+  }
+
+  isSearchingYouTube = true;
+  if (exploreLoadingSpinner) exploreLoadingSpinner.style.display = "block";
+  if (exploreVideoGrid) exploreVideoGrid.innerHTML = "";
+
+  try {
+    const results = await api.searchYouTube(q, 16);
+    if (!results || results.length === 0) {
+      if (exploreVideoGrid) {
+        exploreVideoGrid.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; color: var(--text-secondary); padding: 50px 0; font-size: 14px;">
+            검색 결과가 없습니다. 다른 키워드로 검색해 보세요.
+          </div>
+        `;
+      }
+      return;
+    }
+
+    if (exploreVideoGrid) {
+      exploreVideoGrid.innerHTML = "";
+      results.forEach(item => {
+        const card = document.createElement("div");
+        card.className = "explore-video-card";
+        card.innerHTML = `
+          <div class="explore-card-thumb-wrap">
+            <img class="explore-card-thumb" src="${item.thumbnail}" alt="${item.title}" loading="lazy">
+            ${item.duration_str ? `<span class="explore-card-duration">${item.duration_str}</span>` : ''}
+          </div>
+          <div class="explore-card-body">
+            <div class="explore-card-title" title="${item.title}">${item.title}</div>
+            <div class="explore-card-channel">${item.channel}</div>
+            <div class="explore-card-action">
+              <span class="material-symbols-outlined" style="font-size: 14px;">bolt</span>
+              <span>섀도잉 시작</span>
+            </div>
+          </div>
+        `;
+
+        card.addEventListener("click", () => {
+          const videoUrl = `https://www.youtube.com/watch?v=${item.video_id}`;
+          switchSource('youtube');
+          youtubeUrlInput.value = videoUrl;
+          loadYouTubeVideo(videoUrl);
+        });
+
+        exploreVideoGrid.appendChild(card);
+      });
+    }
+  } catch (err) {
+    console.error("Explore search failed:", err);
+    if (exploreVideoGrid) {
+      exploreVideoGrid.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; color: var(--danger); padding: 50px 0; font-size: 14px;">
+          검색 중 오류가 발생했습니다: ${err.message}
+        </div>
+      `;
+    }
+  } finally {
+    isSearchingYouTube = false;
+    if (exploreLoadingSpinner) exploreLoadingSpinner.style.display = "none";
+  }
+}
+
+async function loadSubscriptionsBar() {
+  if (!exploreSubChipsContainer) return;
+  try {
+    const data = await api.fetchUserSubscriptions();
+    if (googleQuickStatusText) {
+      googleQuickStatusText.textContent = data.authenticated ? "연동 완료" : "Google 연동";
+    }
+
+    const channels = data.channels || [];
+    exploreSubChipsContainer.innerHTML = "";
+
+    // "전체 피드" Chip
+    const allChip = document.createElement("button");
+    allChip.className = "explore-sub-chip active";
+    allChip.dataset.channelId = "ALL";
+    allChip.innerHTML = `<span class="material-symbols-outlined" style="font-size: 14px;">auto_awesome</span><span>추천 영어 구독 피드</span>`;
+    allChip.addEventListener("click", () => {
+      exploreSubChipsContainer.querySelectorAll(".explore-sub-chip").forEach(c => c.classList.remove("active"));
+      allChip.classList.add("active");
+      performExploreSearch("TED-Ed english");
+    });
+    exploreSubChipsContainer.appendChild(allChip);
+
+    // Render individual channel chips
+    channels.forEach(ch => {
+      const chip = document.createElement("button");
+      chip.className = "explore-sub-chip";
+      chip.dataset.channelId = ch.channel_id;
+      chip.dataset.channelTitle = ch.title;
+      chip.innerHTML = `
+        ${ch.thumbnail ? `<img src="${ch.thumbnail}" class="explore-sub-chip-thumb" alt="">` : ''}
+        <span>${ch.title}</span>
+      `;
+
+      chip.addEventListener("click", () => {
+        exploreSubChipsContainer.querySelectorAll(".explore-sub-chip").forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        loadChannelVideos(ch.channel_id, ch.title);
+      });
+
+      exploreSubChipsContainer.appendChild(chip);
+    });
+  } catch (err) {
+    console.error("Failed to load subscriptions bar:", err);
+  }
+}
+
+async function loadChannelVideos(channelId, channelTitle) {
+  if (isSearchingYouTube) return;
+  isSearchingYouTube = true;
+  if (exploreLoadingSpinner) exploreLoadingSpinner.style.display = "block";
+  if (exploreVideoGrid) exploreVideoGrid.innerHTML = "";
+
+  try {
+    const results = await api.fetchChannelVideos(channelId, channelTitle, 16);
+    if (!results || results.length === 0) {
+      if (exploreVideoGrid) {
+        exploreVideoGrid.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; color: var(--text-secondary); padding: 50px 0; font-size: 14px;">
+            '${channelTitle}' 채널의 영상을 불러오지 못했습니다.
+          </div>
+        `;
+      }
+      return;
+    }
+
+    if (exploreVideoGrid) {
+      exploreVideoGrid.innerHTML = "";
+      results.forEach(item => {
+        const card = document.createElement("div");
+        card.className = "explore-video-card";
+        card.innerHTML = `
+          <div class="explore-card-thumb-wrap">
+            <img class="explore-card-thumb" src="${item.thumbnail}" alt="${item.title}" loading="lazy">
+            ${item.duration_str ? `<span class="explore-card-duration">${item.duration_str}</span>` : ''}
+          </div>
+          <div class="explore-card-body">
+            <div class="explore-card-title" title="${item.title}">${item.title}</div>
+            <div class="explore-card-channel">${item.channel || channelTitle}</div>
+            <div class="explore-card-action">
+              <span class="material-symbols-outlined" style="font-size: 14px;">bolt</span>
+              <span>섀도잉 시작</span>
+            </div>
+          </div>
+        `;
+
+        card.addEventListener("click", () => {
+          const videoUrl = `https://www.youtube.com/watch?v=${item.video_id}`;
+          switchSource('youtube');
+          youtubeUrlInput.value = videoUrl;
+          loadYouTubeVideo(videoUrl);
+        });
+
+        exploreVideoGrid.appendChild(card);
+      });
+    }
+  } catch (err) {
+    console.error("Failed to load channel videos:", err);
+  } finally {
+    isSearchingYouTube = false;
+    if (exploreLoadingSpinner) exploreLoadingSpinner.style.display = "none";
   }
 }
 
@@ -439,6 +708,9 @@ function bindEvents() {
   // Source Toggle
   sourceLocalBtn.addEventListener("click", () => switchSource('local'));
   sourceYoutubeBtn.addEventListener("click", () => switchSource('youtube'));
+  if (sourceExploreBtn) {
+    sourceExploreBtn.addEventListener("click", () => switchSource('explore'));
+  }
   
   // YouTube Load
   youtubeLoadBtn.addEventListener("click", () => {
@@ -465,6 +737,38 @@ function bindEvents() {
     youtubeHistorySelect.value = "";
   });
 
+  // YouTube Explore Search Events
+  if (exploreSearchBtn) {
+    exploreSearchBtn.addEventListener("click", () => {
+      if (exploreSearchInput) performExploreSearch(exploreSearchInput.value);
+    });
+  }
+
+  if (exploreSearchInput) {
+    exploreSearchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        performExploreSearch(exploreSearchInput.value);
+      }
+    });
+  }
+
+  if (exploreTagsContainer) {
+    exploreTagsContainer.addEventListener("click", (e) => {
+      const chip = e.target.closest(".explore-tag-chip");
+      if (!chip) return;
+      exploreTagsContainer.querySelectorAll(".explore-tag-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      const query = chip.dataset.query;
+      if (exploreSearchInput) exploreSearchInput.value = query;
+      performExploreSearch(query);
+    });
+  }
+
+  if (googleQuickConnectBtn) {
+    googleQuickConnectBtn.addEventListener("click", openSettingsModal);
+  }
+
   // Episode Complete logic
   if (episodeCompleteBtn) {
     episodeCompleteBtn.addEventListener("click", () => {
@@ -475,10 +779,10 @@ function bindEvents() {
         
         // Update button UI
         if (isCompleted) {
-          episodeCompleteBtn.textContent = "✅ 완료됨 (취소)";
+          episodeCompleteBtn.textContent = "완료됨 (취소)";
           episodeCompleteBtn.classList.add("completed");
         } else {
-          episodeCompleteBtn.textContent = "✅ 완료 표시";
+          episodeCompleteBtn.textContent = "완료 표시";
           episodeCompleteBtn.classList.remove("completed");
         }
         
@@ -496,13 +800,13 @@ function bindEvents() {
     if (!epKey) return;
     
     const originalText = subtitleSearchBtn.innerHTML;
-    subtitleSearchBtn.innerHTML = "🔍 검색 중...";
+    subtitleSearchBtn.innerHTML = "검색 중...";
     subtitleSearchBtn.disabled = true;
     
     try {
       const data = await api.fetchSubtitlesOnline(epKey);
       if (data.success) {
-        subtitleSearchBtn.innerHTML = "✅ 완료!";
+        subtitleSearchBtn.innerHTML = "완료!";
         subtitleSearchBtn.style.color = "var(--success)";
         subtitleSearchBtn.style.borderColor = "var(--success)";
         
@@ -516,7 +820,7 @@ function bindEvents() {
         }, 2000);
         return;
       } else {
-        subtitleSearchBtn.innerHTML = `⚠️ 검색 실패`;
+        subtitleSearchBtn.innerHTML = "검색 실패";
         setTimeout(() => {
           subtitleSearchBtn.innerHTML = originalText;
           subtitleSearchBtn.disabled = false;
@@ -524,7 +828,7 @@ function bindEvents() {
         return;
       }
     } catch {
-      subtitleSearchBtn.innerHTML = `⚠️ 오류 발생`;
+      subtitleSearchBtn.innerHTML = "오류 발생";
       setTimeout(() => {
         subtitleSearchBtn.innerHTML = originalText;
         subtitleSearchBtn.disabled = false;
@@ -536,10 +840,24 @@ function bindEvents() {
     subtitleSearchBtn.disabled = false;
   });
   
-  // Launch Anki
-  document.getElementById("anki-status-btn").addEventListener("click", () => {
-    api.launchAnki();
-  });
+  // Launch / Connect Anki
+  if (ankiStatusBtn) {
+    ankiStatusBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      if (!state.ankiConnected) {
+        if (ankiStatusLabel) ankiStatusLabel.textContent = "실행 중...";
+        await api.launchAnki();
+        // Poll connection status
+        for (let i = 0; i < 6; i++) {
+          await new Promise(r => setTimeout(r, 1000));
+          await checkAnkiStatus();
+          if (state.ankiConnected) break;
+        }
+      } else {
+        await checkAnkiStatus(true);
+      }
+    });
+  }
 
   // Progress Bar Click & Drag
   let isDraggingProgress = false;
@@ -560,6 +878,28 @@ function bindEvents() {
   document.addEventListener("touchmove", (e) => { if (isDraggingProgress) handleProgressSeek(e); }, {passive: true});
   document.addEventListener("mouseup", () => { isDraggingProgress = false; });
   document.addEventListener("touchend", () => { isDraggingProgress = false; });
+
+  // Shortcuts Modal
+  const shortcutsBtn = document.getElementById("shortcuts-btn");
+  const shortcutsModal = document.getElementById("shortcuts-modal");
+  const shortcutsCloseBtn = document.getElementById("shortcuts-close-btn");
+  const shortcutsConfirmBtn = document.getElementById("shortcuts-confirm-btn");
+
+  const openShortcuts = () => {
+    if (shortcutsModal) shortcutsModal.style.display = "flex";
+  };
+  const closeShortcuts = () => {
+    if (shortcutsModal) shortcutsModal.style.display = "none";
+  };
+
+  if (shortcutsBtn) shortcutsBtn.addEventListener("click", openShortcuts);
+  if (shortcutsCloseBtn) shortcutsCloseBtn.addEventListener("click", closeShortcuts);
+  if (shortcutsConfirmBtn) shortcutsConfirmBtn.addEventListener("click", closeShortcuts);
+  if (shortcutsModal) {
+    shortcutsModal.addEventListener("click", (e) => {
+      if (e.target === shortcutsModal) closeShortcuts();
+    });
+  }
 
   // Keyboard shortcuts
   document.addEventListener("keydown", handleKeyboardShortcuts);
@@ -586,6 +926,25 @@ function handleKeyboardShortcuts(e) {
   if (state.dictationModeActive && state.dictationChecked && e.key === "Enter") {
     e.preventDefault();
     document.getElementById("dictation-check-btn").click();
+    return;
+  }
+
+  const shortcutsModal = document.getElementById("shortcuts-modal");
+
+  // Escape key closes modals
+  if (e.code === "Escape") {
+    if (shortcutsModal && shortcutsModal.style.display === "flex") {
+      shortcutsModal.style.display = "none";
+      return;
+    }
+  }
+
+  // ? key toggles shortcuts modal
+  if (e.key === "?" || (e.shiftKey && e.code === "Slash")) {
+    e.preventDefault();
+    if (shortcutsModal) {
+      shortcutsModal.style.display = (shortcutsModal.style.display === "flex") ? "none" : "flex";
+    }
     return;
   }
 

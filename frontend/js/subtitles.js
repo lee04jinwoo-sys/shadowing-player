@@ -2,7 +2,7 @@
 // subtitles.js — 자막 렌더링 & 동기화
 // ====================================
 
-import state, { saveStateToLocal } from './state.js?v=20260818_1140';
+import state, { saveStateToLocal } from './state.js';
 
 // --- DOM References ---
 const subtitleList = document.getElementById("subtitle-list");
@@ -44,7 +44,7 @@ export function renderSubtitles() {
     const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
     const isExtracted = state.extractedSubtitles.has(idx);
-    const extractedBadge = isExtracted ? `<span style="font-size: 10px; margin-left: 6px;" title="Anki로 추출됨">✅</span>` : '';
+    const extractedBadge = isExtracted ? `<span class="material-symbols-outlined" style="font-size: 11px; margin-left: 4px; color: var(--success); vertical-align: middle;" title="Anki로 추출됨">check_circle</span>` : '';
 
     const isStarred = state.starredSubtitles.has(idx);
     item.style.borderLeft = isStarred ? "3px solid #fbbf24" : "1px solid transparent";
@@ -56,18 +56,48 @@ export function renderSubtitles() {
     `;
 
     item.addEventListener("click", (e) => {
-      // 1. If user was dragging / selecting text, NEVER trigger single word click or seek!
+      // 1. If user was dragging / selecting text, let mouseup handle it
       const sel = window.getSelection();
       if (sel && sel.toString().trim().length > 0) {
         return;
       }
 
-      // 2. Single word click
+      // 2. Word Token Click (with Shift+Click multi-word range selection)
       if (e.target && e.target.classList.contains("word-token")) {
         e.stopPropagation();
-        const word = e.target.getAttribute("data-word");
-        if (word && window._showWordDictionary) {
-          window._showWordDictionary(word, sub.text_en, e.target);
+        const currentToken = e.target;
+        const currentWord = currentToken.getAttribute("data-word") || currentToken.textContent.trim();
+
+        if (e.shiftKey && window._lastClickedToken && window._lastClickedToken.subIdx === idx && window._lastClickedToken.el !== currentToken) {
+          // Range selection between lastClickedToken and currentToken
+          const allTokens = Array.from(item.querySelectorAll(".word-token"));
+          const idxA = allTokens.indexOf(window._lastClickedToken.el);
+          const idxB = allTokens.indexOf(currentToken);
+
+          if (idxA !== -1 && idxB !== -1) {
+            const start = Math.min(idxA, idxB);
+            const end = Math.max(idxA, idxB);
+            const selectedTokens = allTokens.slice(start, end + 1);
+
+            // Clear previous token highlights and highlight range
+            document.querySelectorAll(".word-token.token-selected").forEach(el => el.classList.remove("token-selected"));
+            selectedTokens.forEach(t => t.classList.add("token-selected"));
+
+            const phrase = selectedTokens.map(t => t.textContent).join(" ").trim();
+            const rangeRect = getElementsBoundingRect(selectedTokens);
+
+            if (phrase && window._showWordDictionary) {
+              window._showWordDictionary(phrase, sub.text_en, null, rangeRect);
+            }
+            window._lastClickedToken = { el: currentToken, word: currentWord, subIdx: idx };
+            return;
+          }
+        }
+
+        // Single word click
+        window._lastClickedToken = { el: currentToken, word: currentWord, subIdx: idx };
+        if (currentWord && window._showWordDictionary) {
+          window._showWordDictionary(currentWord, sub.text_en, currentToken);
         }
         return;
       }
@@ -201,10 +231,10 @@ export function updateStarUI(index) {
     if (dictationStarBtn) {
       if (isStarred) {
         dictationStarBtn.style.background = "rgba(251, 191, 36, 0.2)";
-        dictationStarBtn.innerHTML = "🌟 보관됨 (A)";
+        dictationStarBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 15px; vertical-align: middle;">star</span> 보관됨 (A)';
       } else {
         dictationStarBtn.style.background = "transparent";
-        dictationStarBtn.innerHTML = "⭐ 보관 (A)";
+        dictationStarBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 15px; vertical-align: middle;">star</span> 보관 (A)';
       }
     }
   }
@@ -230,4 +260,24 @@ export function isShortSubtitle(sub) {
   if (!sub || !sub.text_en) return true;
   const wordCount = sub.text_en.trim().split(/\s+/).filter(w => w.length > 0).length;
   return wordCount < 3;
+}
+
+function getElementsBoundingRect(elements) {
+  if (!elements || elements.length === 0) return null;
+  let minLeft = Infinity, minTop = Infinity, maxRight = -Infinity, maxBottom = -Infinity;
+  elements.forEach(el => {
+    const r = el.getBoundingClientRect();
+    if (r.left < minLeft) minLeft = r.left;
+    if (r.top < minTop) minTop = r.top;
+    if (r.right > maxRight) maxRight = r.right;
+    if (r.bottom > maxBottom) maxBottom = r.bottom;
+  });
+  return {
+    left: minLeft,
+    top: minTop,
+    right: maxRight,
+    bottom: maxBottom,
+    width: maxRight - minLeft,
+    height: maxBottom - minTop
+  };
 }

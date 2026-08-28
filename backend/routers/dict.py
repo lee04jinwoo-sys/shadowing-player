@@ -1,48 +1,34 @@
-import os
 import json
-import re
-import io
-import base64
-import uuid
 import logging
+import os
+import re
 import sqlite3
-from typing import Optional, List
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import Response
 from pydantic import BaseModel
-from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-load_dotenv('/Users/leejinwoo/Desktop/Projects/Anki Manager/.env')
-load_dotenv()
-
-# Add Anki Manager path
-import sys
-ANKI_MANAGER_PATH = "/Users/leejinwoo/Desktop/Projects/Anki Manager"
-if ANKI_MANAGER_PATH not in sys.path:
-    sys.path.append(ANKI_MANAGER_PATH)
-
-try:
-    from integrations.anki_connect import AnkiConnector
-    from integrations.audio import AnkiTTSFiller
-    from core.completer import NoteCompleter, normalize_vocab_placeholders
-    from config import MODEL_VOCAB, DECK_VOCAB, NOTE_COMPLETOR_SYS_INSTRUCT
-except Exception as e:
-    logger.warning(f"Anki Manager module import error: {e}")
-    NoteCompleter = None
-    normalize_vocab_placeholders = lambda x: x
+from backend.anki_core import (
+    AnkiConnector,
+    AnkiTTSFiller,
+    normalize_vocab_placeholders,
+    DECK_VOCAB,
+    MODEL_VOCAB,
+)
+from backend.app_dirs import DICT_CACHE_DB_PATH, ensure_directories, get_google_api_key
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/dict")
 
 # Local SQLite Cache for sub-millisecond dictionary lookups
-CACHE_DB_PATH = os.path.join("cache", "dict_cache.db")
-os.makedirs("cache", exist_ok=True)
+ensure_directories()
 
-def init_db():
-    conn = sqlite3.connect(CACHE_DB_PATH)
+
+def init_db() -> None:
+    conn = sqlite3.connect(str(DICT_CACHE_DB_PATH))
     cur = conn.cursor()
     cur.execute("""
         CREATE TABLE IF NOT EXISTS dict_cache (
@@ -56,9 +42,10 @@ def init_db():
 
 init_db()
 
+
 def get_cached_word(word: str) -> Optional[dict]:
     try:
-        conn = sqlite3.connect(CACHE_DB_PATH)
+        conn = sqlite3.connect(str(DICT_CACHE_DB_PATH))
         cur = conn.cursor()
         cur.execute("SELECT data_json FROM dict_cache WHERE word_key = ?", (word.lower().strip(),))
         row = cur.fetchone()
@@ -69,9 +56,10 @@ def get_cached_word(word: str) -> Optional[dict]:
         logger.warning(f"Cache read error: {e}")
     return None
 
-def set_cached_word(word: str, data: dict):
+
+def set_cached_word(word: str, data: dict) -> None:
     try:
-        conn = sqlite3.connect(CACHE_DB_PATH)
+        conn = sqlite3.connect(str(DICT_CACHE_DB_PATH))
         cur = conn.cursor()
         cur.execute("INSERT OR REPLACE INTO dict_cache (word_key, data_json) VALUES (?, ?)", 
                     (word.lower().strip(), json.dumps(data, ensure_ascii=False)))
@@ -79,6 +67,18 @@ def set_cached_word(word: str, data: dict):
         conn.close()
     except Exception as e:
         logger.warning(f"Cache write error: {e}")
+
+
+def clean_vocab_example(example: str) -> str:
+    """Removes any Korean translations or bracketed Korean notes from English example sentences."""
+    if not example:
+        return ""
+    # Remove (한글...), [한글...]
+    cleaned = re.sub(r"\s*[\(\[][^()\[\]]*[가-힣]+[^()\[\]]*[\)\]]", "", example)
+    # Remove - 한글... or : 한글... at end
+    cleaned = re.sub(r"\s*[-:]\s*[가-힣\s,.~!?]+$", "", cleaned)
+    return cleaned.strip()
+
 
 class WordLookupRequest(BaseModel):
     word: str
@@ -91,16 +91,17 @@ def lookup_word(req: WordLookupRequest):
     if not cleaned_word:
         raise HTTPException(status_code=400, detail="Invalid word or expression")
 
-    # Apply Anki Manager placeholder normalization (e.g. someone/sth -> A, B, V-ing)
-    if normalize_vocab_placeholders:
-        cleaned_word = normalize_vocab_placeholders(cleaned_word)
+    # Apply placeholder normalization (e.g. someone/sth -> A, B, V-ing)
+    cleaned_word = normalize_vocab_placeholders(cleaned_word)
 
     cache_key = f"{cleaned_word}"
     cached = get_cached_word(cache_key)
     if cached:
+        if "example" in cached and cached["example"]:
+            cached["example"] = clean_vocab_example(cached["example"])
         return cached
 
-    api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = get_google_api_key()
     if not api_key:
         raise HTTPException(status_code=500, detail="GOOGLE_API_KEY not configured")
 
@@ -122,7 +123,7 @@ def lookup_word(req: WordLookupRequest):
    - ② 유의어 비교: "[유의어]와 비슷하지만, [단어]는 [차이점]을 강조합니다."
    - ③ 콜로케이션: "자주 쓰이는 표현으로는 '[영어표현](한글뜻)' 등이 있습니다."
 7. "synonyms": 2~4개의 영단어/유의어 리스트
-8. "example": 해당 표현이 사용된 자연스러운 실용 영어 예문 (단어에 A, B가 있다면 예문에서는 실제 단어로 대체할 것) + 괄호 안 한국어 번역
+8. "example": 해당 표현이 사용된 자연스러운 실용 영어 예문 (단어에 A, B가 있다면 예문에서는 실제 단어로 대체할 것. 괄호나 한국어 번역은 절대 넣지 말고 100% 순수 영어 문장으로만 작성할 것)
 9. "related_phrase": 단어가 문맥 속 더 큰 숙어/구동사에 포함되어 있다면 {{"phrase": "...", "meaning": "..."}}, 그렇지 않다면 null.
 
 반드시 유효한 JSON 형식으로만 응답하십시오.
@@ -137,6 +138,8 @@ def lookup_word(req: WordLookupRequest):
         )
 
         data = json.loads(response.text)
+        if "example" in data and data["example"]:
+            data["example"] = clean_vocab_example(data["example"])
         set_cached_word(cache_key, data)
         return data
 
@@ -155,7 +158,8 @@ class VocabAddRequest(BaseModel):
 @router.post("/add-to-anki")
 def add_vocab_card(req: VocabAddRequest):
     # 1. Normalize placeholders like someone/something -> A, B, V-ing
-    norm_word = normalize_vocab_placeholders(req.word.strip()) if normalize_vocab_placeholders else req.word.strip()
+    norm_word = normalize_vocab_placeholders(req.word.strip())
+    clean_example = clean_vocab_example(req.example or "")
 
     # 2. English Vocabulary audio rule: generate gTTS audio via AnkiTTSFiller.generate_gtts
     sound_tag = ""
@@ -170,20 +174,18 @@ def add_vocab_card(req: VocabAddRequest):
         "뜻": req.meaning,
         "품사": req.pos or "",
         "유의어": req.synonyms or "",
-        "예문": req.example or "",
+        "예문": clean_example,
         "설명": req.explanation or "",
         "소리": sound_tag
     }
 
     # 4. Invoke AnkiConnect
     try:
-        note = {
-            "deckName": "1. Language::1.1. English::Vocabulary",
-            "modelName": "English Vocabulary",
-            "fields": fields,
-            "options": {"allowDuplicate": False}
-        }
-        note_id = AnkiConnector.invoke("addNote", note=note)
+        note_id = AnkiConnector.add_note(
+            deck_name=DECK_VOCAB,
+            model_name=MODEL_VOCAB,
+            fields=fields,
+        )
         return {"success": True, "note_id": note_id, "word": norm_word, "sound": sound_tag}
     except Exception as e:
         err_msg = str(e)

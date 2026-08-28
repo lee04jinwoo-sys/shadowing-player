@@ -5,14 +5,20 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Local project videos directory
-MEDIA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "videos")
+def _get_media_dir() -> str:
+    """Return the configured video directory, falling back to project-local 'videos/'."""
+    try:
+        from backend.app_dirs import get_video_dir
+        return get_video_dir()
+    except Exception:
+        return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "videos")
 
 def scan_files() -> list:
     """
     Scans the local media directory and groups video files with their matching subtitles
     based on Season and Episode markers (e.g. S01E01).
     """
+    MEDIA_DIR = _get_media_dir()
     if not os.path.exists(MEDIA_DIR):
         logger.warning(f"Media directory not found: {MEDIA_DIR}")
         return []

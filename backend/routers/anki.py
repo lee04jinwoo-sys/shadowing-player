@@ -1,7 +1,13 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
-from backend.anki_bridge import check_anki_connection, add_sentence_to_anki, bulk_add_sentences_to_anki, add_vocab_to_anki
+from backend.anki_bridge import (
+    check_anki_connection,
+    add_sentence_to_anki,
+    bulk_add_sentences_to_anki,
+    add_vocab_to_anki,
+    bulk_add_vocab_to_anki,
+)
 
 router = APIRouter(prefix="/api/anki")
 
@@ -16,9 +22,20 @@ class SentenceModel(BaseModel):
 class BulkSentenceModel(BaseModel):
     items: List[SentenceItem]
 
+class VocabItem(BaseModel):
+    word: str
+    meaning: Optional[str] = ""
+    pos: Optional[str] = ""
+    synonyms: Optional[str] = ""
+    example: Optional[str] = ""
+    explanation: Optional[str] = ""
+
 class VocabModel(BaseModel):
     word: str
     meaning: str = ""
+
+class BulkVocabModel(BaseModel):
+    items: List[VocabItem]
 
 @router.api_route("/status", methods=["GET", "HEAD"])
 def get_anki_status():
@@ -49,6 +66,15 @@ def add_vocab(data: VocabModel):
         return res
     else:
         raise HTTPException(status_code=400, detail=res.get("error", "Failed to add card"))
+
+@router.post("/bulk-add-vocab")
+def bulk_add_vocab(data: BulkVocabModel):
+    items = [item.model_dump() for item in data.items]
+    res = bulk_add_vocab_to_anki(items)
+    if res["success"]:
+        return res
+    else:
+        raise HTTPException(status_code=400, detail=res.get("error", "Failed to add vocab cards in bulk"))
 
 import subprocess
 

@@ -3,7 +3,7 @@
 // ====================================
 // HTML5 <video> 와 YouTube IFrame Player를 통합 인터페이스로 제공
 
-import state from './state.js?v=20260818_1000';
+import state from './state.js';
 
 // --- DOM References ---
 const videoElement = document.getElementById("video-element");
@@ -193,7 +193,7 @@ export function showAviWarning() {
     warnBox.id = "avi-warning";
     warnBox.style.cssText = "color: #ef4444; padding: 24px; text-align: center; font-size: 16px; font-weight: 600;";
     warnBox.innerHTML = `
-      ⚠️ 재생 불가능한 파일 형식 (.avi)<br><br>
+      재생 불가능한 파일 형식 (.avi)<br><br>
       <span style="font-size: 14px; color: #94a3b8; font-weight: normal;">
         HTML5 비디오는 .avi 재생을 지원하지 않습니다.<br>
         프로젝트 폴더 내 <code>convert_avi_to_mp4.py</code>를 실행하여 변환해 주세요.

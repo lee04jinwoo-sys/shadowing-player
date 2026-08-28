@@ -26,8 +26,9 @@ def fetch_subtitles(ep_key: str):
         
     try:
         # Clear existing cache for this episode if any
+        from backend.app_dirs import SUBTITLE_CACHE_DIR
         base_name = os.path.basename(video_path)
-        cache_path = os.path.join("cache", f"{base_name}.parsed.json")
+        cache_path = os.path.join(str(SUBTITLE_CACHE_DIR), f"{base_name}.parsed.json")
         if os.path.exists(cache_path):
             os.remove(cache_path)
             

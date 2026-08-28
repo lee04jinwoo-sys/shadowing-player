@@ -2,8 +2,8 @@
 // dict.js — 인터랙티브 단어 팝업 사전 & Anki 단어 연동
 // ====================================
 
-import { lookupWord, addVocabCardToAnki } from "./api.js?v=20260818_1140";
-import { saveVocabItem } from "./state.js?v=20260818_1140";
+import { lookupWord } from "./api.js";
+import { saveVocabItem, getSavedVocab } from "./state.js";
 
 let popoverEl = null;
 let currentWordData = null;
@@ -45,7 +45,7 @@ function createPopoverDOM() {
         </div>
 
         <div class="dict-phrase-row" id="dict-phrase-row" style="display: none;">
-          <span class="dict-phrase-label">💡 문맥 표현</span>
+          <span class="dict-phrase-label">문맥 표현</span>
           <button class="dict-phrase-chip" id="dict-phrase-chip" title="이 숙어/표현 전체 분석하기"></button>
         </div>
         
@@ -68,8 +68,8 @@ function createPopoverDOM() {
 
     <div class="dict-footer">
       <button class="btn primary dict-anki-btn" id="dict-anki-btn">
-        <span class="material-symbols-outlined" style="font-size: 14px;">add</span>
-        Anki 단어/표현장에 추가
+        <span class="material-symbols-outlined" style="font-size: 14px;">star</span>
+        <span id="dict-btn-text">보관</span>
       </button>
     </div>
   `;
@@ -84,10 +84,10 @@ function createPopoverDOM() {
     if (word) playWordPronunciation(word);
   });
 
-  // Anki Save
+  // Queue Save (보관)
   document.getElementById("dict-anki-btn").addEventListener("click", async (e) => {
     e.stopPropagation();
-    await saveWordToAnki();
+    await saveWordToQueue();
   });
 }
 
@@ -263,6 +263,26 @@ function renderWordDetails(data) {
   } else {
     exRow.style.display = "none";
   }
+
+  // Update button state if already saved in queue
+  const cleanWord = (data.word || data.lemma || "").trim();
+  const savedList = getSavedVocab();
+  const isSaved = savedList.some(v => v.word.toLowerCase() === cleanWord.toLowerCase());
+
+  const ankiBtn = document.getElementById("dict-anki-btn");
+  const btnText = document.getElementById("dict-btn-text");
+  if (ankiBtn) {
+    ankiBtn.disabled = false;
+    if (isSaved) {
+      ankiBtn.style.backgroundColor = "var(--bg-tertiary)";
+      ankiBtn.style.borderColor = "var(--border)";
+      if (btnText) btnText.textContent = "보관됨 (다시 보관)";
+    } else {
+      ankiBtn.style.backgroundColor = "";
+      ankiBtn.style.borderColor = "";
+      if (btnText) btnText.textContent = "보관";
+    }
+  }
 }
 
 function positionPopover(targetElement, customRect = null) {
@@ -305,7 +325,7 @@ function playWordPronunciation(word) {
   }
 }
 
-async function saveWordToAnki() {
+async function saveWordToQueue() {
   const wordEl = document.getElementById("dict-word-text");
   const meaningEl = document.getElementById("dict-meaning-text");
   const posEl = document.getElementById("dict-pos-badge");
@@ -320,63 +340,72 @@ async function saveWordToAnki() {
   const exampleVal = exampleEl ? exampleEl.textContent.trim() : (currentWordData?.example || "");
   const explanationVal = explanationEl ? explanationEl.textContent.trim() : (currentWordData?.explanation || "");
 
-  if (!wordVal || !meaningVal) return;
+  if (!wordVal) return;
 
   const ankiBtn = document.getElementById("dict-anki-btn");
-  ankiBtn.disabled = true;
-  ankiBtn.textContent = "Anki 저장 중...";
+  const btnText = document.getElementById("dict-btn-text");
 
-  try {
-    const payload = {
-      word: wordVal,
-      meaning: meaningVal,
-      pos: posVal,
-      synonyms: synonymsVal,
-      example: exampleVal,
-      explanation: explanationVal
-    };
+  const payload = {
+    word: wordVal,
+    meaning: meaningVal,
+    pos: posVal,
+    synonyms: synonymsVal,
+    example: exampleVal,
+    explanation: explanationVal,
+    extracted: false
+  };
 
-    // Save to local storage for Anki extraction mode
-    saveVocabItem({
-      ...payload,
-      extracted: false
-    });
+  // Save to local storage queue
+  saveVocabItem(payload);
 
-    const res = await addVocabCardToAnki(payload);
-    if (res.success) {
-      saveVocabItem({ ...payload, extracted: true, note_id: res.note_id });
-      ankiBtn.innerHTML = "<span class=\"material-symbols-outlined\" style=\"font-size: 14px;\">check</span> Anki 저장 완료!";
-      ankiBtn.style.backgroundColor = "var(--success)";
-      ankiBtn.style.borderColor = "var(--success)";
-      
-      // Update Anki export panel if open
-      if (window._renderStarredList) window._renderStarredList();
+  if (btnText) btnText.textContent = "보관 완료!";
+  ankiBtn.style.backgroundColor = "var(--success)";
+  ankiBtn.style.borderColor = "var(--success)";
 
-      setTimeout(() => {
-        hidePopover();
-      }, 1500);
-    } else if (res.duplicate) {
-      ankiBtn.innerHTML = "⚠️ 이미 Anki에 등록된 단어/표현";
-      ankiBtn.style.backgroundColor = "var(--bg-tertiary)";
-      ankiBtn.style.color = "var(--accent)";
-      setTimeout(() => {
-        ankiBtn.disabled = false;
-        ankiBtn.innerHTML = "<span class=\"material-symbols-outlined\" style=\"font-size: 14px;\">add</span> Anki 단어/표현장에 추가";
-        ankiBtn.style.backgroundColor = "";
-        ankiBtn.style.color = "";
-      }, 2500);
-    } else {
-      ankiBtn.textContent = `저장 실패: ${res.error || "오류"}`;
-      setTimeout(() => {
-        ankiBtn.disabled = false;
-        ankiBtn.innerHTML = "<span class=\"material-symbols-outlined\" style=\"font-size: 14px;\">add</span> Anki 단어/표현장에 추가";
-      }, 2500);
-    }
-  } catch (err) {
-    ankiBtn.textContent = "전송 오류";
-    setTimeout(() => {
-      ankiBtn.disabled = false;
-      ankiBtn.innerHTML = "<span class=\"material-symbols-outlined\" style=\"font-size: 14px;\">add</span> Anki 단어/표현장에 추가";
-    }, 2500);
+  // Update Anki extraction panel if open
+  if (window._renderStarredList) window._renderStarredList();
+  if (window._updateStarredCounts) window._updateStarredCounts();
+
+  showDictToast(`'${wordVal}' 단어가 추출 대기열에 보관되었습니다.`);
+
+  setTimeout(() => {
+    if (btnText) btnText.textContent = "보관됨";
+    ankiBtn.style.backgroundColor = "var(--bg-tertiary)";
+    ankiBtn.style.borderColor = "var(--border)";
+  }, 1500);
+}
+
+function showDictToast(msg) {
+  let toast = document.getElementById("dict-toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "dict-toast";
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e1b4b;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: 1px solid #6366f1;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+      animation: fadeIn 0.2s ease;
+    `;
+    document.body.appendChild(toast);
   }
+  toast.textContent = msg;
+  toast.style.display = "flex";
+
+  setTimeout(() => {
+    if (toast) toast.style.display = "none";
+  }, 2500);
 }

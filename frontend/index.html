@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-<link href="/css/styles.css?v=20260818_2200" rel="stylesheet">
+<link href="/css/styles.css?v=20260827_0120" rel="stylesheet">
 </head>
 <body>
 
@@ -25,8 +25,11 @@
       <button class="source-toggle-btn active" id="source-local-btn" title="로컬 영상">
         <span class="material-symbols-outlined">folder</span>로컬
       </button>
-      <button class="source-toggle-btn" id="source-youtube-btn" title="유튜브 영상">
+      <button class="source-toggle-btn" id="source-youtube-btn" title="유튜브 섀도잉 플레이어">
         <span class="material-symbols-outlined">play_circle</span>YouTube
+      </button>
+      <button class="source-toggle-btn" id="source-explore-btn" title="유튜브 영상 탐색 및 추천">
+        <span class="material-symbols-outlined">explore</span>탐색
       </button>
     </div>
 
@@ -37,8 +40,8 @@
         <select id="episode-select">
           <option value="">에피소드 불러오는 중...</option>
         </select>
-        <button class="header-btn" id="subtitle-search-btn" style="display: none;" title="온라인에서 자막을 자동으로 검색하여 다운로드합니다">🔍 온라인 자막 검색</button>
-        <button class="header-btn" id="episode-complete-btn" style="display: none;" title="이 에피소드를 완료 처리합니다">✅ 완료 표시</button>
+        <button class="header-btn" id="subtitle-search-btn" style="display: none;" title="온라인에서 자막을 자동으로 검색하여 다운로드합니다">온라인 자막 검색</button>
+        <button class="header-btn" id="episode-complete-btn" style="display: none;" title="이 에피소드를 완료 처리합니다">완료 표시</button>
       </div>
 
       <!-- YouTube: URL Input & History -->
@@ -54,12 +57,20 @@
     </div>
   </div>
 
-  <!-- Right Section: Anki Connect Status -->
+  <!-- Right Section: Settings & Anki Connect Status -->
   <div class="header-right">
+    <button class="header-btn" id="shortcuts-btn" title="단축키 안내 (?)">
+      <span class="material-symbols-outlined">keyboard</span>
+      <span>단축키</span>
+    </button>
+    <button class="header-btn" id="settings-btn" title="API 키 및 저장 경로 설정">
+      <span class="material-symbols-outlined">settings</span>
+      <span>설정</span>
+    </button>
     <button class="header-btn" id="anki-status-btn" title="Anki를 실행하거나 상태를 확인합니다">
       <div class="status-dot" id="anki-status-dot"></div>
       <span class="material-symbols-outlined">sync</span>
-      <span>Anki 연결</span>
+      <span id="anki-status-label">Anki 연결</span>
     </button>
   </div>
 </header>
@@ -229,29 +240,50 @@
 
     <!-- Anki Extraction Panel (Visible in Mode 4) -->
     <div id="anki-extraction-panel">
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 16px; margin-bottom: 12px; gap: 6px;">
-        <h3 style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
-          <span class="material-symbols-outlined" style="color: var(--warning); font-size: 16px;">star</span>
-          보관 (<span id="starred-count">0</span>)
-        </h3>
-        <div style="display: flex; gap: 4px; align-items: center;">
-          <button class="header-btn" id="export-apkg-btn" title="Anki 덱 파일(.apkg)로 다운로드" style="height: 28px; padding: 0 8px; font-size: 11px; cursor: pointer;">
-            <span class="material-symbols-outlined" style="font-size: 14px; pointer-events: none;">download</span>.apkg
+      <!-- Sub-Tab Header -->
+      <div class="extraction-tabs-header">
+        <div class="extraction-sub-tabs">
+          <button class="ext-sub-tab active" id="ext-tab-sentences" data-tab="sentences">
+            <span class="material-symbols-outlined" style="font-size: 15px;">chat</span>문장 (<span id="starred-sentence-count">0</span>)
           </button>
-          <button class="header-btn" id="export-csv-btn" title="Excel/CSV 파일(.csv)로 다운로드" style="height: 28px; padding: 0 8px; font-size: 11px; cursor: pointer;">
-            <span class="material-symbols-outlined" style="font-size: 14px; pointer-events: none;">table_chart</span>.csv
-          </button>
-          <button class="btn primary" id="anki-bulk-export-btn" title="Anki 앱으로 직접 전송" style="height: 28px; padding: 0 10px; font-size: 11px; border-radius: var(--radius-md); white-space: nowrap;">
-            <span class="material-symbols-outlined" style="font-size: 14px; pointer-events: none;">rocket_launch</span>Anki 전송
+          <button class="ext-sub-tab" id="ext-tab-words" data-tab="words">
+            <span class="material-symbols-outlined" style="font-size: 15px;">menu_book</span>단어/표현 (<span id="starred-word-count">0</span>)
           </button>
         </div>
       </div>
 
-      <div id="starred-list-container">
-        <div style="text-align: center; color: var(--text-muted); margin-top: 40px; font-size: 13px;">
-          보관된 문장이 없습니다.<br>맞추기 모드에서 '⭐ 보관 (A)' 버튼을 눌러 문장을 모아보세요.
+      <!-- Actions Toolbar -->
+      <div class="extraction-actions-bar">
+        <!-- Sentence actions -->
+        <div id="sentence-actions" class="ext-action-group" style="display: flex; gap: 6px; align-items: center;">
+          <button class="header-btn" id="export-apkg-btn" title="Anki 덱 파일(.apkg)로 다운로드" style="height: 28px; padding: 0 8px; font-size: 11px;">
+            <span class="material-symbols-outlined" style="font-size: 14px; pointer-events: none;">download</span>.apkg
+          </button>
+          <button class="header-btn" id="export-csv-btn" title="Excel/CSV 파일(.csv)로 다운로드" style="height: 28px; padding: 0 8px; font-size: 11px;">
+            <span class="material-symbols-outlined" style="font-size: 14px; pointer-events: none;">table_chart</span>.csv
+          </button>
+          <button class="btn primary" id="anki-bulk-export-btn" title="보관된 문장 전체를 Anki로 전송" style="height: 28px; padding: 0 10px; font-size: 11px; border-radius: var(--radius-md); white-space: nowrap;">
+            <span class="material-symbols-outlined" style="font-size: 14px; pointer-events: none;">rocket_launch</span>문장 전체 Anki 전송
+          </button>
+        </div>
+
+        <!-- Vocab actions -->
+        <div id="vocab-actions" class="ext-action-group" style="display: none; gap: 6px; align-items: center;">
+          <button class="header-btn" id="export-vocab-apkg-btn" title="Anki 단어 덱 파일(.apkg)로 다운로드" style="height: 28px; padding: 0 8px; font-size: 11px;">
+            <span class="material-symbols-outlined" style="font-size: 14px; pointer-events: none;">download</span>.apkg
+          </button>
+          <button class="header-btn" id="export-vocab-csv-btn" title="Excel/CSV 단어 파일(.csv)로 다운로드" style="height: 28px; padding: 0 8px; font-size: 11px;">
+            <span class="material-symbols-outlined" style="font-size: 14px; pointer-events: none;">table_chart</span>.csv
+          </button>
+          <button class="btn primary" id="anki-bulk-vocab-export-btn" title="보관된 단어/표현 전체를 Anki로 전송" style="height: 28px; padding: 0 12px; font-size: 11px; border-radius: var(--radius-md); white-space: nowrap; background: linear-gradient(135deg, #8b5cf6, #6366f1);">
+            <span class="material-symbols-outlined" style="font-size: 14px; pointer-events: none;">rocket_launch</span>단어 전체 Anki 전송
+          </button>
         </div>
       </div>
+
+      <!-- Lists Containers -->
+      <div id="starred-sentences-container" class="ext-tab-content active" style="overflow-y: auto; flex: 1;"></div>
+      <div id="starred-words-container" class="ext-tab-content" style="display: none; overflow-y: auto; flex: 1;"></div>
 
       <div id="bulk-export-progress" style="display: none;">
         <div id="bulk-export-status" style="font-size: 13px; color: var(--text-secondary);">전송 중... (0/0)</div>
@@ -259,7 +291,219 @@
     </div>
 
   </aside>
+
+  <!-- Exploration Section (YouTube In-App Discovery) -->
+  <section class="explore-section" id="explore-section" style="display: none;">
+    <div class="explore-header">
+      <div class="explore-search-bar">
+        <span class="material-symbols-outlined explore-search-icon">search</span>
+        <input type="text" id="explore-search-input" placeholder="유튜브 검색어 입력 또는 영상 링크 붙여넣기 (Enter)..." spellcheck="false">
+        <button class="btn primary" id="explore-search-btn">
+          <span class="material-symbols-outlined" style="font-size: 16px;">search</span>
+          <span>검색</span>
+        </button>
+      </div>
+
+      <!-- Quick Curation Tag Chips -->
+      <div class="explore-tags-container" id="explore-tags-container">
+        <button class="explore-tag-chip active" data-query="TED-Ed english">TED-Ed 지식</button>
+        <button class="explore-tag-chip" data-query="Modern Family english clip">미드 모던패밀리</button>
+        <button class="explore-tag-chip" data-query="Friends english clip">미드 프렌즈</button>
+        <button class="explore-tag-chip" data-query="Conan OBrien english talk show">코난 쇼</button>
+        <button class="explore-tag-chip" data-query="Daily english conversation speaking">일상 회화</button>
+        <button class="explore-tag-chip" data-query="BBC 6 Minute English">BBC 6분 영어</button>
+        <button class="explore-tag-chip" data-query="Movie english clip shadowing">영화 명장면</button>
+        <button class="explore-tag-chip" data-query="Steve Jobs speech english">명연설</button>
+      </div>
+
+      <!-- English Subscriptions Row -->
+      <div class="explore-sub-row" id="explore-sub-row">
+        <div class="explore-sub-header">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="material-symbols-outlined" style="font-size: 16px; color: var(--accent);">subscriptions</span>
+            <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">내 영어 구독 채널</span>
+          </div>
+          <button class="btn secondary" id="google-quick-connect-btn" style="height: 24px; padding: 0 8px; font-size: 11px; gap: 4px; display: inline-flex; align-items: center;" title="Google 계정 연동하여 구독 채널 실시간 동기화">
+            <span class="material-symbols-outlined" style="font-size: 14px;">login</span>
+            <span id="google-quick-status-text">Google 연동</span>
+          </button>
+        </div>
+        <div class="explore-sub-chips-container" id="explore-sub-chips-container">
+          <div style="font-size: 11px; color: var(--text-muted); padding: 4px 0;">구독 채널 불러오는 중...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Video Grid Scroll Container -->
+    <div class="explore-grid-scroll">
+      <div id="explore-loading-spinner" style="display: none; text-align: center; padding: 60px 0; color: var(--text-secondary);">
+        <div class="spinner" style="margin: 0 auto 12px auto;"></div>
+        <span>영상을 탐색하는 중입니다...</span>
+      </div>
+      <div id="explore-video-grid" class="explore-video-grid"></div>
+    </div>
+  </section>
 </main>
+
+<!-- ============ Settings Modal ============ -->
+<div id="settings-modal" class="modal-backdrop" style="display: none;">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <span class="material-symbols-outlined" style="color: var(--accent);">settings</span>
+        <h2>환경 설정</h2>
+      </div>
+      <button class="modal-close-btn" id="settings-close-btn">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Google YouTube Account OAuth -->
+      <div class="settings-field">
+        <label>
+          <span>YouTube 구독 계정 연동</span>
+          <span class="settings-hint">Google 로그인으로 내 구독 채널 중 영어 채널의 최신 영상을 실시간 동기화합니다.</span>
+        </label>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <div id="settings-google-status-badge" style="flex: 1; padding: 8px 12px; background: var(--bg-surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-secondary);">
+            연동 상태 확인 중...
+          </div>
+          <button type="button" class="btn primary" id="settings-google-auth-btn" style="height: 36px; padding: 0 14px; font-size: 12px; white-space: nowrap; gap: 6px; display: inline-flex; align-items: center;">
+            <span class="material-symbols-outlined" style="font-size: 16px;">account_circle</span>
+            <span id="settings-google-auth-btn-text">Google 로그인</span>
+          </button>
+        </div>
+
+        <!-- Google Client ID & Secret configuration -->
+        <div id="google-oauth-config-box" style="margin-top: 10px; padding: 10px 12px; background: var(--bg-surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 8px;">
+          <div style="font-size: 11px; color: var(--text-muted);">
+            Google Cloud Console에서 발급받은 OAuth Client ID가 필요합니다.
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="settings-google-client-id" placeholder="Google Client ID (예: 123...apps.googleusercontent.com)" style="flex: 1; height: 32px; font-size: 12px;">
+            <input type="password" id="settings-google-client-secret" placeholder="Client Secret" style="width: 140px; height: 32px; font-size: 12px;">
+            <button type="button" class="btn secondary" id="settings-save-google-creds-btn" style="height: 32px; padding: 0 10px; font-size: 11px; white-space: nowrap;">저장</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Google API Key -->
+      <div class="settings-field">
+        <label for="settings-api-key">
+          <span>Google Gemini API Key</span>
+          <span class="settings-hint">AI 사전 해설 및 문장 번역 보강에 사용됩니다.</span>
+        </label>
+        <div class="settings-input-group">
+          <input type="password" id="settings-api-key" placeholder="AIzaSy... 또는 환경변수에서 로드">
+          <button type="button" class="settings-addon-btn material-symbols-outlined" id="settings-key-toggle-btn" title="키 표시/숨김">visibility</button>
+        </div>
+      </div>
+
+      <!-- Local Video Folder -->
+      <div class="settings-field">
+        <label for="settings-video-dir">
+          <span>로컬 비디오 저장 폴더</span>
+          <span class="settings-hint">선택한 폴더의 모든 영상(.mp4, .avi)과 자막(.srt, .smi)을 자동으로 불러옵니다.</span>
+        </label>
+        <div class="settings-input-group">
+          <input type="text" id="settings-video-dir" placeholder="/Users/.../Movies/Shadowing Player">
+          <button type="button" class="btn secondary" id="settings-select-folder-btn" style="height: 36px; padding: 0 12px; font-size: 12px; white-space: nowrap; gap: 4px; display: inline-flex; align-items: center;" title="macOS Finder 폴더 선택창 열기">
+            <span class="material-symbols-outlined" style="font-size: 16px;">folder_open</span>폴더 선택
+          </button>
+        </div>
+      </div>
+
+      <!-- Anki URL -->
+      <div class="settings-field">
+        <label for="settings-anki-url">
+          <span>AnkiConnect URL</span>
+          <span class="settings-hint">기본 포트: 8765</span>
+        </label>
+        <div class="settings-input-group">
+          <input type="text" id="settings-anki-url" placeholder="http://localhost:8765">
+        </div>
+      </div>
+
+      <!-- App Logs -->
+      <div class="settings-field">
+        <label for="settings-log-path">
+          <span>앱 로그 파일</span>
+          <span class="settings-hint">오류 발생 시 진단용 로그 파일 위치입니다.</span>
+        </label>
+        <div class="settings-input-group">
+          <input type="text" id="settings-log-path" readonly style="color: var(--text-muted); cursor: text;">
+          <button type="button" class="btn secondary" id="settings-copy-log-btn" style="height: 36px; padding: 0 12px; font-size: 12px;">복사</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn secondary" id="settings-cancel-btn">취소</button>
+      <button class="btn primary" id="settings-save-btn">설정 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Shortcuts Guide Modal ============ -->
+<div id="shortcuts-modal" class="modal-backdrop" style="display: none;">
+  <div class="modal-dialog" style="max-width: 580px;">
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <span class="material-symbols-outlined" style="color: var(--accent);">keyboard</span>
+        <h2>단축키 및 사용법 안내</h2>
+      </div>
+      <button class="btn icon-only" id="shortcuts-close-btn" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px; display: flex;">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="modal-body" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 16px; max-height: 70vh; overflow-y: auto;">
+      <!-- Category 1: 재생 & 구간 이동 -->
+      <div class="shortcut-category">
+        <h4 style="font-size: 13px; font-weight: 600; color: var(--accent); margin: 0 0 8px 0; display: flex; align-items: center; gap: 6px;">
+          <span class="material-symbols-outlined" style="font-size: 16px;">play_circle</span> 재생 및 구간 제어
+        </h4>
+        <div class="shortcut-grid">
+          <div class="shortcut-row"><kbd>Space</kbd><span>재생 / 일시정지</span></div>
+          <div class="shortcut-row"><kbd>←</kbd><span>이전 문장/자막으로 이동</span></div>
+          <div class="shortcut-row"><kbd>→</kbd><span>다음 문장/자막으로 이동</span></div>
+          <div class="shortcut-row"><kbd>R</kbd><span>현재 1문장 무한 반복 (A-B Loop)</span></div>
+          <div class="shortcut-row"><kbd>[</kbd> / <kbd>-</kbd><span>재생 속도 느리게 (-0.1x)</span></div>
+          <div class="shortcut-row"><kbd>]</kbd> / <kbd>+</kbd><span>재생 속도 빠르게 (+0.1x)</span></div>
+        </div>
+      </div>
+
+      <!-- Category 2: 학습 & Anki 보관 -->
+      <div class="shortcut-category">
+        <h4 style="font-size: 13px; font-weight: 600; color: #fbbf24; margin: 0 0 8px 0; display: flex; align-items: center; gap: 6px;">
+          <span class="material-symbols-outlined" style="font-size: 16px;">school</span> 학습 및 Anki 보관
+        </h4>
+        <div class="shortcut-grid">
+          <div class="shortcut-row"><kbd>A</kbd><span>현재 문장 보관 / 해제 (대기열)</span></div>
+          <div class="shortcut-row"><kbd>V</kbd><span>리스닝 모드 자막 숨김/보임 토글</span></div>
+          <div class="shortcut-row"><kbd>Enter</kbd><span>받아쓰기(맞추기) 정답 확인 및 다음 문장</span></div>
+          <div class="shortcut-row"><kbd>?</kbd> / <kbd>Shift + /</kbd><span>단축키 안내 창 열기/닫기</span></div>
+        </div>
+      </div>
+
+      <!-- Category 3: 단어 & 숙어 사전 팁 -->
+      <div class="shortcut-category">
+        <h4 style="font-size: 13px; font-weight: 600; color: #a78bfa; margin: 0 0 8px 0; display: flex; align-items: center; gap: 6px;">
+          <span class="material-symbols-outlined" style="font-size: 16px;">menu_book</span> 단어 & 숙어 사전 활용 팁
+        </h4>
+        <div class="shortcut-grid">
+          <div class="shortcut-row"><span class="shortcut-action">단어 클릭</span><span>AI 3단계 팝업 사전 조회</span></div>
+          <div class="shortcut-row"><kbd>Shift</kbd> + <span class="shortcut-action">끝 단어 클릭</span><span>두 단어 사이 숙어/구문 자동 선택</span></div>
+          <div class="shortcut-row"><span class="shortcut-action">텍스트 드래그</span><span>원하는 표현 드래그 즉시 조회</span></div>
+          <div class="shortcut-row"><span class="shortcut-action">보관 버튼</span><span>사전에서 단어를 추출 대기열에 저장</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer" style="padding: 12px 20px;">
+      <button class="btn primary" id="shortcuts-confirm-btn" style="width: 100%;">확인 (닫기)</button>
+    </div>
+  </div>
+</div>
 
 <!-- YouTube IFrame API -->
 <script>
@@ -279,6 +523,6 @@
   });
 </script>
 <!-- Load App scripts -->
-<script type="module" src="/js/app.js?v=20260818_2200"></script>
+<script type="module" src="/js/app.js?v=20260827_0120"></script>
 </body>
 </html>

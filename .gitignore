@@ -3,6 +3,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 venv/
+.venv/
+dist/
+build/
+*.spec
+src-tauri/target/
+src-tauri/binaries/
 .env
 
 # Cache & Local Videos & Exports

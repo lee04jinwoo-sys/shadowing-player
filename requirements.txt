@@ -11,3 +11,7 @@ babelfish
 pydantic
 yt-dlp
 genanki
+
+gtts
+google-cloud-texttospeech
+nltk
