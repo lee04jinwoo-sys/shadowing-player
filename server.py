@@ -118,9 +118,9 @@ if __name__ == "__main__":
     import uvicorn
     args = parse_args()
 
-    # Start parent watchdog if spawned as a sidecar process
-    target_parent_pid = args.parent_pid if args.parent_pid > 0 else os.getppid()
-    start_parent_watchdog(target_parent_pid)
+    # Start parent watchdog only if explicitly requested by desktop host
+    if args.parent_pid > 0:
+        start_parent_watchdog(args.parent_pid)
 
     # If --video-dir is provided, override the settings
     if args.video_dir:
@@ -130,5 +130,6 @@ if __name__ == "__main__":
         save_settings(settings)
         logger.info(f"Video directory overridden: {args.video_dir}")
 
-    logger.info(f"Starting Shadowing Player server on port {args.port}")
-    uvicorn.run(app, host="127.0.0.1", port=args.port)
+    host = os.getenv("HOST", "0.0.0.0")
+    logger.info(f"Starting Shadowing Player server on {host}:{args.port}")
+    uvicorn.run(app, host=host, port=args.port)
