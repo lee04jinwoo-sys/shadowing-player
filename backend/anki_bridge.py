@@ -1,296 +1,211 @@
 """Anki bridge module for Shadowing Player.
 
-Provides high-level functions for adding sentences and vocabulary to Anki,
-with AI translation enrichment and TTS audio generation.
+Routes all card creation and synchronization requests to the Central Anki Manager Gateway
+(http://127.0.0.1:8001/api/cards), ensuring a Single Source of Truth for:
+- Card model & deck rules (English Vocabulary & English Sentence)
+- TTS audio generation (Chirp3-HD / gTTS)
+- Zero-synonym rule enforcement
+- Automated 어휘 ↔ 문장 상호 연결 (links.db) indexing
 """
-import io
-import base64
-import uuid
+import os
 import logging
-import concurrent.futures
+from typing import List, Dict, Any, Optional
+import requests
 
-import gtts
+logger = logging.getLogger("ShadowingAnkiBridge")
 
-from backend.anki_core import (
-    AnkiConnector,
-    AnkiTTSFiller,
-    NoteCompleter,
-    DECK_SENTENCE,
-    MODEL_SENTENCE,
-)
+ANKI_MANAGER_URL = os.getenv("ANKI_MANAGER_URL", "http://127.0.0.1:8001").rstrip("/")
+_TIMEOUT_SEC = 60
 
-logger = logging.getLogger(__name__)
-
-# Initialize GCP TTS Client (optional - falls back to gTTS if unavailable)
-_tts_client = None
-try:
-    from google.cloud import texttospeech
-    _tts_client = texttospeech.TextToSpeechClient()
-except Exception as e:
-    logger.warning(f"GCP TTS Client init warning: {e}")
+# 로컬 통신이므로 프록시 환경변수(http_proxy 등) 우회
+_SESSION = requests.Session()
+_SESSION.trust_env = False
 
 
 def check_anki_connection() -> bool:
-    """Checks if Anki is running and AnkiConnect is accessible."""
+    """Checks if Anki Manager Gateway is reachable and AnkiConnect is active."""
     try:
-        AnkiConnector.invoke('deckNames')
-        return True
-    except Exception:
+        url = f"{ANKI_MANAGER_URL}/api/cards/status"
+        res = _SESSION.get(url, timeout=5)
+        if res.status_code == 200:
+            return bool(res.json().get("anki_connected", False))
+        return False
+    except Exception as e:
+        logger.warning(f"Anki Manager Gateway connection check failed: {e}")
         return False
 
 
-def _generate_and_store_tts(sentence: str) -> str:
-    """Generate high quality Chirp3-HD TTS audio via GCP or fallback to gTTS, and store in AnkiConnect."""
-    clean_text = sentence.strip()
-    if not clean_text:
-        return ""
-
-    # 1. Try GCP Chirp3-HD / Studio voices
-    global _tts_client
-    if _tts_client is not None:
-        try:
-            sound_tag, voice_name = AnkiTTSFiller.generate_random_tts(_tts_client, clean_text)
-            if sound_tag:
-                return sound_tag
-        except Exception as gcp_err:
-            logger.error(f"GCP TTS failed, falling back to gTTS: {gcp_err}")
-
-    # 2. Fallback to gTTS
-    try:
-        tts = gtts.gTTS(clean_text, lang='en')
-        buf = io.BytesIO()
-        tts.write_to_fp(buf)
-        buf.seek(0)
-        b64_audio = base64.b64encode(buf.read()).decode('utf-8')
-        fname = f"shadowing_gtts_{uuid.uuid4().hex[:8]}.mp3"
-        AnkiConnector.invoke("storeMediaFile", filename=fname, data=b64_audio)
-        return f"[sound:{fname}]"
-    except Exception as e:
-        logger.error(f"gTTS fallback error for '{sentence}': {e}")
-        return ""
-
-
-def _ensure_translations(items: list) -> list:
-    """If any items are missing translation, enrich with Gemini AI."""
-    missing_indices = [i for i, item in enumerate(items) if not item.get("translation")]
-    if not missing_indices:
-        return items
-
-    try:
-        completer = NoteCompleter()
-        to_enrich = [{"문장": items[i]["sentence"]} for i in missing_indices]
-        enriched = completer.enrich_sentences(to_enrich)
-        if enriched and len(enriched) == len(missing_indices):
-            for orig_idx, enr in zip(missing_indices, enriched):
-                if isinstance(enr, dict) and "해설" in enr:
-                    items[orig_idx]["translation"] = enr["해설"]
-    except Exception as e:
-        logger.error(f"Translation enrichment error: {e}")
-
-    return items
-
-
 def add_sentence_to_anki(sentence: str, translation: str = "") -> dict:
-    """Directly adds a sentence card to Anki with Chirp3-HD TTS audio and Korean translation."""
-    if not check_anki_connection():
-        return {"success": False, "error": "Anki desktop app is not running or AnkiConnect is not accessible"}
+    """Delegates single sentence creation to Anki Manager Gateway."""
+    clean_sentence = sentence.strip()
+    if not clean_sentence:
+        return {"success": False, "error": "문장이 비어있습니다."}
+
+    url = f"{ANKI_MANAGER_URL}/api/cards/sentence"
+    payload = {
+        "sentence": clean_sentence,
+        "translation": translation or "",
+        "auto_enrich": True,
+        "generate_audio": True
+    }
 
     try:
-        # If translation is missing, enrich with Gemini
-        if not translation:
-            try:
-                completer = NoteCompleter()
-                res = completer.enrich_sentences([{"문장": sentence}])
-                if res and isinstance(res[0], dict) and "해설" in res[0]:
-                    translation = res[0]["해설"]
-            except Exception as e:
-                logger.warning(f"AI translation fallback error: {e}")
-
-        sound_tag = _generate_and_store_tts(sentence)
-        
-        fields = {
-            "문장": sentence,
-            "해설": translation or "",
-            "소리": sound_tag
+        res = _SESSION.post(url, json=payload, timeout=_TIMEOUT_SEC)
+        data = res.json()
+        if res.status_code == 200:
+            if data.get("duplicate"):
+                return {
+                    "success": True,
+                    "duplicate": True,
+                    "added": [clean_sentence],
+                    "translation": translation or (data.get("data") or {}).get("translation", "")
+                }
+            return {
+                "success": True,
+                "note_id": data.get("note_id"),
+                "added": [clean_sentence],
+                "translation": (data.get("data") or {}).get("translation", translation)
+            }
+        error_detail = data.get("detail", "Failed to add sentence card")
+        if "duplicate" in str(error_detail).lower():
+            return {"success": True, "duplicate": True, "added": [clean_sentence], "translation": translation}
+        return {"success": False, "error": error_detail}
+    except requests.exceptions.ConnectionError:
+        return {
+            "success": False,
+            "error": "Anki Manager 서버(http://127.0.0.1:8001)에 연결할 수 없습니다. Anki Manager를 실행해주세요."
         }
-        
-        # Adapt to exact model field names
-        try:
-            actual_fields = AnkiConnector.invoke('modelFieldNames', modelName=MODEL_SENTENCE) or []
-            if actual_fields and "해설" not in actual_fields:
-                if len(actual_fields) >= 2:
-                    fields = {actual_fields[0]: sentence, actual_fields[1]: translation or ""}
-                    if len(actual_fields) >= 3:
-                        fields[actual_fields[2]] = sound_tag
-        except Exception:
-            pass
-
-        note_id = AnkiConnector.add_note(
-            deck_name=DECK_SENTENCE,
-            model_name=MODEL_SENTENCE,
-            fields=fields,
-        )
-        return {"success": True, "note_id": note_id, "added": [sentence], "translation": translation}
-
     except Exception as e:
-        logger.error(f"Error adding sentence directly: {e}")
+        logger.error(f"Error in add_sentence_to_anki gateway call: {e}")
         return {"success": False, "error": str(e)}
 
 
 def bulk_add_sentences_to_anki(items: list) -> dict:
-    """Directly adds multiple sentence cards to Anki concurrently with Chirp3-HD TTS & Korean translation."""
-    if not check_anki_connection():
-        return {"success": False, "error": "Anki desktop app is not running"}
-
+    """Delegates bulk sentence creation to Anki Manager Gateway."""
     if not items:
         return {"success": True, "count": 0}
 
-    # Ensure all items have translations
-    items = _ensure_translations(items)
+    url = f"{ANKI_MANAGER_URL}/api/cards/sentence/bulk"
+    formatted_items = [
+        {"sentence": item.get("sentence", "").strip(), "translation": item.get("translation", "").strip()}
+        for item in items
+        if item.get("sentence", "").strip()
+    ]
 
-    # Generate Chirp3-HD audio concurrently
-    def process_item(item):
-        s = item.get("sentence", "").strip()
-        t = item.get("translation", "").strip()
-        if not s:
-            return None
-        sound_tag = _generate_and_store_tts(s)
-        return {
-            "deckName": DECK_SENTENCE,
-            "modelName": MODEL_SENTENCE,
-            "fields": {
-                "문장": s,
-                "해설": t,
-                "소리": sound_tag
-            },
-            "options": {"allowDuplicate": False}
-        }
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-        notes = list(filter(None, executor.map(process_item, items)))
-
-    if not notes:
-        return {"success": True, "count": 0}
+    payload = {
+        "items": formatted_items,
+        "auto_enrich": True,
+        "generate_audio": True
+    }
 
     try:
-        res = AnkiConnector.invoke("addNotes", notes=notes)
-        success_count = sum(1 for x in (res or []) if x is not None)
-        return {"success": True, "count": success_count, "total": len(items)}
+        res = _SESSION.post(url, json=payload, timeout=_TIMEOUT_SEC * 2)
+        data = res.json()
+        if res.status_code == 200:
+            return {
+                "success": True,
+                "count": data.get("count", 0),
+                "total": data.get("total", len(items))
+            }
+        return {"success": False, "error": data.get("detail", "Failed to bulk add sentences")}
+    except requests.exceptions.ConnectionError:
+        return {
+            "success": False,
+            "error": "Anki Manager 서버(http://127.0.0.1:8001)에 연결할 수 없습니다. Anki Manager를 실행해주세요."
+        }
     except Exception as e:
-        logger.error(f"Bulk add notes error: {e}")
+        logger.error(f"Error in bulk_add_sentences_to_anki gateway call: {e}")
         return {"success": False, "error": str(e)}
 
 
 def add_vocab_to_anki(word: str, meaning: str = "") -> dict:
-    """Adds a single vocabulary card, enriches it if needed, and generates gTTS audio."""
-    if not check_anki_connection():
-        return {"success": False, "error": "Anki desktop app is not running or AnkiConnect is not accessible"}
+    """Delegates single vocabulary creation to Anki Manager Gateway."""
+    clean_word = word.strip()
+    if not clean_word:
+        return {"success": False, "error": "단어가 비어있습니다."}
+
+    url = f"{ANKI_MANAGER_URL}/api/cards/vocab"
+    payload = {
+        "word": clean_word,
+        "meaning": meaning or "",
+        "auto_enrich": True,
+        "generate_audio": True
+    }
 
     try:
-        from backend.anki_core import DECK_VOCAB, MODEL_VOCAB
-        from backend.anki_core.completer import normalize_vocab_placeholders
-
-        norm_word = normalize_vocab_placeholders(word.strip())
-        if not norm_word:
-            return {"success": False, "error": "단어가 비어있습니다."}
-
-        # Enrich with AI if meaning is missing
-        completer = NoteCompleter()
-        enriched = completer.enrich_vocab([{"단어": norm_word, "뜻": meaning}])
-
-        v = enriched[0] if (enriched and len(enriched) > 0) else {"뜻": meaning}
-        
-        # Rule: English Vocabulary MUST use gTTS
-        sound_tag = ""
-        try:
-            sound_tag, _ = AnkiTTSFiller.generate_gtts(norm_word)
-        except Exception as tts_err:
-            logger.warning(f"gTTS for vocab error: {tts_err}")
-
-        from backend.routers.dict import clean_vocab_example
-        clean_ex = clean_vocab_example(v.get("예문", ""))
-
-        fields = {
-            "단어": norm_word,
-            "뜻": v.get("뜻", meaning),
-            "품사": v.get("품사", ""),
-            "유의어": v.get("유의어", ""),
-            "예문": clean_ex,
-            "설명": v.get("설명", ""),
-            "소리": sound_tag,
+        res = _SESSION.post(url, json=payload, timeout=_TIMEOUT_SEC)
+        data = res.json()
+        if res.status_code == 200:
+            if data.get("duplicate"):
+                return {
+                    "success": False,
+                    "duplicate": True,
+                    "error": data.get("error") or "이미 Anki에 등록된 단어/표현입니다 (중복 방지)"
+                }
+            return {
+                "success": True,
+                "added": [clean_word],
+                "note_id": data.get("note_id")
+            }
+        error_detail = data.get("detail", "Failed to add vocab card")
+        if "duplicate" in str(error_detail).lower():
+            return {
+                "success": False,
+                "duplicate": True,
+                "error": "이미 Anki에 등록된 단어/표현입니다 (중복 방지)"
+            }
+        return {"success": False, "error": error_detail}
+    except requests.exceptions.ConnectionError:
+        return {
+            "success": False,
+            "error": "Anki Manager 서버(http://127.0.0.1:8001)에 연결할 수 없습니다. Anki Manager를 실행해주세요."
         }
-        note_id = AnkiConnector.add_note(
-            deck_name=DECK_VOCAB,
-            model_name=MODEL_VOCAB,
-            fields=fields,
-        )
-        return {"success": True, "added": [norm_word], "note_id": note_id}
-
     except Exception as e:
-        err_msg = str(e)
-        if "duplicate" in err_msg.lower():
-            return {"success": False, "error": "이미 Anki에 등록된 단어/표현입니다 (중복 방지)", "duplicate": True}
-        logger.error(f"Error adding vocab: {e}")
-        return {"success": False, "error": err_msg}
+        logger.error(f"Error in add_vocab_to_anki gateway call: {e}")
+        return {"success": False, "error": str(e)}
 
 
 def bulk_add_vocab_to_anki(items: list) -> dict:
-    """Adds multiple vocabulary cards to Anki concurrently with gTTS and allowDuplicate: False."""
-    if not check_anki_connection():
-        return {"success": False, "error": "Anki desktop app is not running"}
-
+    """Delegates bulk vocabulary creation to Anki Manager Gateway."""
     if not items:
         return {"success": True, "count": 0}
 
-    from backend.anki_core import DECK_VOCAB, MODEL_VOCAB
-    from backend.anki_core.completer import normalize_vocab_placeholders
-    from backend.routers.dict import clean_vocab_example
+    url = f"{ANKI_MANAGER_URL}/api/cards/vocab/bulk"
+    formatted_items = []
+    for item in items:
+        w = item.get("word") or item.get("단어") or ""
+        if not w.strip():
+            continue
+        formatted_items.append({
+            "word": w.strip(),
+            "meaning": item.get("meaning") or item.get("뜻") or "",
+            "pos": item.get("pos") or item.get("품사") or "",
+            "synonyms": "", # Forced empty
+            "example": item.get("example") or item.get("예문") or "",
+            "explanation": item.get("explanation") or item.get("설명") or ""
+        })
 
-    def process_vocab_item(item: dict):
-        raw_word = item.get("word", "") or item.get("단어", "")
-        norm_word = normalize_vocab_placeholders(raw_word.strip())
-        if not norm_word:
-            return None
-
-        meaning = item.get("meaning", "") or item.get("뜻", "")
-        pos = item.get("pos", "") or item.get("품사", "")
-        synonyms = item.get("synonyms", "") or item.get("유의어", "")
-        example = clean_vocab_example(item.get("example", "") or item.get("예문", ""))
-        explanation = item.get("explanation", "") or item.get("설명", "")
-
-        # Generate gTTS audio (English Vocabulary rule)
-        sound_tag = ""
-        try:
-            sound_tag, _ = AnkiTTSFiller.generate_gtts(norm_word)
-        except Exception as tts_err:
-            logger.warning(f"gTTS error for '{norm_word}': {tts_err}")
-
-        return {
-            "deckName": DECK_VOCAB,
-            "modelName": MODEL_VOCAB,
-            "fields": {
-                "단어": norm_word,
-                "뜻": meaning,
-                "품사": pos,
-                "유의어": synonyms,
-                "예문": example,
-                "설명": explanation,
-                "소리": sound_tag,
-            },
-            "options": {"allowDuplicate": False}
-        }
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-        notes = list(filter(None, executor.map(process_vocab_item, items)))
-
-    if not notes:
-        return {"success": True, "count": 0}
+    payload = {
+        "items": formatted_items,
+        "auto_enrich": False,
+        "generate_audio": True
+    }
 
     try:
-        res = AnkiConnector.invoke("addNotes", notes=notes)
-        success_count = sum(1 for x in (res or []) if x is not None)
-        return {"success": True, "count": success_count, "total": len(items)}
+        res = _SESSION.post(url, json=payload, timeout=_TIMEOUT_SEC * 2)
+        data = res.json()
+        if res.status_code == 200:
+            return {
+                "success": True,
+                "count": data.get("count", 0),
+                "total": data.get("total", len(items))
+            }
+        return {"success": False, "error": data.get("detail", "Failed to bulk add vocab cards")}
+    except requests.exceptions.ConnectionError:
+        return {
+            "success": False,
+            "error": "Anki Manager 서버(http://127.0.0.1:8001)에 연결할 수 없습니다. Anki Manager를 실행해주세요."
+        }
     except Exception as e:
-        logger.error(f"Bulk add vocab error: {e}")
+        logger.error(f"Error in bulk_add_vocab_to_anki gateway call: {e}")
         return {"success": False, "error": str(e)}
-

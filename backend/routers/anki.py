@@ -45,10 +45,11 @@ def get_anki_status():
 @router.post("/add-sentence")
 def add_sentence(data: SentenceModel):
     res = add_sentence_to_anki(data.sentence, data.translation)
-    if res["success"]:
+    if res.get("success"):
         return res
-    else:
-        raise HTTPException(status_code=400, detail=res.get("error", "Failed to add card"))
+    if "duplicate" in str(res.get("error", "")).lower():
+        return {"success": True, "duplicate": True}
+    raise HTTPException(status_code=400, detail=res.get("error", "Failed to add card"))
 
 @router.post("/bulk-add")
 def bulk_add_sentences(data: BulkSentenceModel):
