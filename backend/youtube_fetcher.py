@@ -94,6 +94,18 @@ def fetch_youtube_info(url: str) -> dict:
         return {"success": False, "error": str(e)}
 
 
+def _get_available_browser_cookies() -> tuple:
+    """Detect available browser for cookie extraction (Brave, Edge, Chrome, Safari)."""
+    app_sup = os.path.expanduser("~/Library/Application Support")
+    if os.path.exists(os.path.join(app_sup, "BraveSoftware")):
+        return ("brave",)
+    if os.path.exists(os.path.join(app_sup, "Microsoft Edge")):
+        return ("edge",)
+    if os.path.exists(os.path.join(app_sup, "Google", "Chrome")):
+        return ("chrome",)
+    return ()
+
+
 def fetch_youtube_subtitles(video_id: str) -> list:
     """
     YouTube 자막을 [{start_ms, end_ms, text_en}] 형식으로 반환.
@@ -110,8 +122,10 @@ def fetch_youtube_subtitles(video_id: str) -> list:
     # Download subtitles using yt-dlp
     import yt_dlp
     import tempfile
+    import requests
     
     url = f"https://www.youtube.com/watch?v={video_id}"
+    browser_cookies = _get_available_browser_cookies()
     
     with tempfile.TemporaryDirectory() as tmpdir:
         ydl_opts = {
@@ -124,6 +138,8 @@ def fetch_youtube_subtitles(video_id: str) -> list:
             'subtitlesformat': 'json3',
             'outtmpl': os.path.join(tmpdir, '%(id)s.%(ext)s'),
         }
+        if browser_cookies:
+            ydl_opts['cookiesfrombrowser'] = browser_cookies
         
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -142,8 +158,22 @@ def fetch_youtube_subtitles(video_id: str) -> list:
                         if subs_data:
                             break
                 
-                if not subs_data:
-                    logger.warning("No English subtitles found, trying download method")
+                subtitles = []
+                if subs_data and subs_data.get('url'):
+                    # Try direct fetch of json3 URL with requests and browser headers
+                    headers = {
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
+                    }
+                    try:
+                        resp = requests.get(subs_data['url'], headers=headers, timeout=15)
+                        if resp.status_code == 200:
+                            raw = resp.json()
+                            subtitles = _parse_json3(raw)
+                    except Exception as req_err:
+                        logger.warning(f"Direct subtitle URL request failed: {req_err}")
+
+                if not subtitles:
+                    logger.warning("Trying fallback subtitle download method")
                     # Fallback: actually download the subtitle files
                     ydl.download([url])
                     
@@ -176,13 +206,6 @@ def fetch_youtube_subtitles(video_id: str) -> list:
                                 break
                         if not found_file:
                             return []
-                else:
-                    # Download the specific subtitle URL
-                    subtitle_url = subs_data['url']
-                    req = urllib.request.Request(subtitle_url, headers={'User-Agent': 'Mozilla/5.0'})
-                    with urllib.request.urlopen(req) as resp:
-                        raw = json.loads(resp.read().decode('utf-8'))
-                    subtitles = _parse_json3(raw)
                 
                 if subtitles:
                     # Apply sentence-based merging logic

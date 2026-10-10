@@ -479,8 +479,9 @@ export function compareStrings(correct, typed) {
 
 export function updateStarredCounts() {
   const sentenceCount = state.starredSubtitles.size;
-  const vocabList = getSavedVocab ? getSavedVocab() : [];
-  const wordCount = vocabList.length;
+  const allVocab = getSavedVocab ? getSavedVocab() : [];
+  const pendingVocab = allVocab.filter(v => !v.extracted);
+  const wordCount = pendingVocab.length;
 
   if (starredSentenceCount) starredSentenceCount.textContent = sentenceCount;
   if (starredWordCount) starredWordCount.textContent = wordCount;
@@ -616,8 +617,8 @@ function renderSentencesList() {
       btn.textContent = "추출 중...";
 
       try {
-        const ok = await addSentenceToAnki(sentence, translation);
-        if (ok) {
+        const res = await addSentenceToAnki(sentence, translation);
+        if (res && res.success) {
           state.starredSubtitles.delete(idx);
           delete state.editedStarredText[idx];
           delete state.editedStarredTranslation[idx];
@@ -654,7 +655,8 @@ function renderVocabList() {
   const exportVocabApkgBtn = document.getElementById("export-vocab-apkg-btn");
   const exportVocabCsvBtn = document.getElementById("export-vocab-csv-btn");
 
-  const vocabList = getSavedVocab ? getSavedVocab() : [];
+  const allVocab = getSavedVocab ? getSavedVocab() : [];
+  const vocabList = allVocab.filter(v => !v.extracted);
   if (vocabList.length === 0) {
     if (exportVocabApkgBtn) exportVocabApkgBtn.disabled = true;
     if (exportVocabCsvBtn) exportVocabCsvBtn.disabled = true;
@@ -716,6 +718,7 @@ function renderVocabList() {
     vCard.querySelector('.remove-vocab-btn').addEventListener('click', () => {
       deleteSavedVocabItem(v.id);
       renderStarredList();
+      import('./subtitles.js').then(m => m.renderSubtitles());
     });
 
     vCard.querySelector('.extract-vocab-btn').addEventListener('click', async (e) => {
@@ -803,7 +806,7 @@ function getSavedVocabItemsData() {
   }));
 }
 
-// --- Anki Sentence Bulk Export ---
+// --- Anki Sentence Bulk Export with Real-Time Progress ---
 async function bulkExportToAnki() {
   if (state.starredSubtitles.size === 0) return;
 
@@ -824,7 +827,6 @@ async function bulkExportToAnki() {
   const inputs = Array.from(starredSentencesContainer.querySelectorAll('.starred-sentence-input'));
   const total = inputs.length;
   const items = [];
-  const idxList = [];
 
   inputs.forEach(input => {
     const sentence = input.value.trim();
@@ -833,10 +835,10 @@ async function bulkExportToAnki() {
       const transInput = starredSentencesContainer.querySelector(`.starred-translation-input[data-idx="${idx}"]`);
       const trans = transInput ? transInput.value.trim() : (state.editedStarredTranslation[idx] || (state.subtitles[idx] && state.subtitles[idx].text_kr) || "");
       items.push({
+        idx: idx,
         sentence: sentence,
         translation: trans
       });
-      idxList.push(idx);
     }
   });
 
@@ -846,40 +848,49 @@ async function bulkExportToAnki() {
     return;
   }
 
+  let completedCount = 0;
+  let successCount = 0;
   bulkExportStatus.textContent = `문장 전송 중... (0/${total})`;
 
-  try {
-    const res = await bulkAddSentencesToAnki(items);
-    if (res.success) {
-      idxList.forEach(idx => {
-        state.starredSubtitles.delete(idx);
-        delete state.editedStarredText[idx];
-        delete state.editedStarredTranslation[idx];
-        state.extractedSubtitles.add(idx);
-      });
-      saveStateToLocal();
-      renderSubtitles();
-      
-      bulkExportStatus.style.color = "var(--success)";
-      bulkExportStatus.textContent = `완료! (${res.count || items.length}/${total} 문장 전송 성공)`;
-    } else {
-      bulkExportStatus.style.color = "var(--danger)";
-      bulkExportStatus.textContent = `오류: ${res.error || "전송 실패"}`;
-    }
-  } catch (err) {
-    console.error("Bulk sentence add error:", err);
-    bulkExportStatus.style.color = "var(--danger)";
-    bulkExportStatus.textContent = "네트워크 전송 오류 발생";
-  } finally {
-    if (ankiBulkExportBtn) ankiBulkExportBtn.disabled = false;
-    setTimeout(() => {
-      bulkExportProgress.style.display = "none";
-      renderStarredList();
-    }, 2500);
+  // Process concurrently in chunks of 4 for fast, reliable real-time progress
+  const CHUNK_SIZE = 4;
+  for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+    const chunk = items.slice(i, i + CHUNK_SIZE);
+    await Promise.all(chunk.map(async (item) => {
+      try {
+        const res = await addSentenceToAnki(item.sentence, item.translation);
+        const isOk = (res === true) || (res && (res.success || res.duplicate || res.note_id));
+        if (isOk) {
+          successCount++;
+          state.starredSubtitles.delete(item.idx);
+          delete state.editedStarredText[item.idx];
+          delete state.editedStarredTranslation[item.idx];
+          state.extractedSubtitles.add(item.idx);
+        }
+      } catch (err) {
+        console.warn(`Failed to export sentence #${item.idx}:`, err);
+      } finally {
+        completedCount++;
+        bulkExportStatus.textContent = `문장 전송 중... (${completedCount}/${total})`;
+      }
+    }));
+
+    saveStateToLocal();
+    renderSubtitles();
+    updateStarredCounts();
   }
+
+  bulkExportStatus.style.color = successCount > 0 ? "var(--success)" : "var(--danger)";
+  bulkExportStatus.textContent = `완료! (${successCount}/${total} 문장 Anki 전송 완료)`;
+
+  if (ankiBulkExportBtn) ankiBulkExportBtn.disabled = false;
+  setTimeout(() => {
+    bulkExportProgress.style.display = "none";
+    renderStarredList();
+  }, 1500);
 }
 
-// --- Anki Vocab Bulk Export ---
+// --- Anki Vocab Bulk Export with Real-Time Progress ---
 async function bulkExportVocabToAnki() {
   const vocabList = getSavedVocab ? getSavedVocab() : [];
   if (vocabList.length === 0) return;
@@ -897,30 +908,48 @@ async function bulkExportVocabToAnki() {
   if (ankiBulkVocabExportBtn) ankiBulkVocabExportBtn.disabled = true;
   bulkExportProgress.style.display = "block";
   bulkExportStatus.style.color = "var(--accent)";
-  bulkExportStatus.textContent = `단어 전송 중... (0/${vocabList.length})`;
+  
+  const total = vocabList.length;
+  let completedCount = 0;
+  let successCount = 0;
+  bulkExportStatus.textContent = `단어 전송 중... (0/${total})`;
 
-  try {
-    const res = await bulkAddVocabToAnki(vocabList);
-    if (res.success) {
-      vocabList.forEach(v => {
-        updateSavedVocabItem(v.id, { extracted: true });
-      });
-      
-      bulkExportStatus.style.color = "var(--success)";
-      bulkExportStatus.textContent = `완료! (${res.count || vocabList.length}/${vocabList.length} 단어 전송 성공)`;
-    } else {
-      bulkExportStatus.style.color = "var(--danger)";
-      bulkExportStatus.textContent = `오류: ${res.error || "전송 실패"}`;
-    }
-  } catch (err) {
-    console.error("Bulk vocab add error:", err);
-    bulkExportStatus.style.color = "var(--danger)";
-    bulkExportStatus.textContent = "단어 전송 오류 발생";
-  } finally {
-    if (ankiBulkVocabExportBtn) ankiBulkVocabExportBtn.disabled = false;
-    setTimeout(() => {
-      bulkExportProgress.style.display = "none";
-      renderStarredList();
-    }, 2500);
+  const CHUNK_SIZE = 4;
+  for (let i = 0; i < vocabList.length; i += CHUNK_SIZE) {
+    const chunk = vocabList.slice(i, i + CHUNK_SIZE);
+    await Promise.all(chunk.map(async (v) => {
+      try {
+        const res = await addVocabCardToAnki({
+          word: v.word,
+          meaning: v.meaning,
+          explanation: v.explanation || "",
+          example: v.example || "",
+          pos: v.pos || "",
+          synonyms: v.synonyms || ""
+        });
+        const isOk = (res === true) || (res && (res.success || res.duplicate || res.note_id));
+        if (isOk) {
+          successCount++;
+          updateSavedVocabItem(v.id, { extracted: true });
+        }
+      } catch (err) {
+        console.warn(`Failed to export vocab '${v.word}':`, err);
+      } finally {
+        completedCount++;
+        bulkExportStatus.textContent = `단어 전송 중... (${completedCount}/${total})`;
+      }
+    }));
+
+    renderSubtitles();
+    updateStarredCounts();
   }
+
+  bulkExportStatus.style.color = successCount > 0 ? "var(--success)" : "var(--danger)";
+  bulkExportStatus.textContent = `완료! (${successCount}/${total} 단어 Anki 전송 완료)`;
+
+  if (ankiBulkVocabExportBtn) ankiBulkVocabExportBtn.disabled = false;
+  setTimeout(() => {
+    bulkExportProgress.style.display = "none";
+    renderStarredList();
+  }, 1500);
 }

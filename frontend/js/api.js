@@ -57,12 +57,24 @@ export async function launchAnki() {
 }
 
 export async function addSentenceToAnki(sentence, translation = "") {
-  const res = await fetch("/api/anki/add-sentence", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sentence, translation })
-  });
-  return res.ok;
+  try {
+    const res = await fetch("/api/anki/add-sentence", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sentence, translation })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      if (err.detail && err.detail.toLowerCase().includes("duplicate")) {
+        return { success: true, duplicate: true };
+      }
+      return { success: false, error: err.detail || "전송 실패" };
+    }
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 }
 
 export async function bulkAddSentencesToAnki(items) {

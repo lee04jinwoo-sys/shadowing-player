@@ -2,11 +2,12 @@
 // dict.js — 인터랙티브 단어 팝업 사전 & Anki 단어 연동
 // ====================================
 
-import { lookupWord } from "./api.js";
-import { saveVocabItem, getSavedVocab } from "./state.js";
+import { lookupWord, addVocabCardToAnki } from "./api.js";
+import state, { saveVocabItem, getSavedVocab } from "./state.js";
 
 let popoverEl = null;
 let currentWordData = null;
+let currentLookupPromise = null;
 
 export function initDictionary() {
   createPopoverDOM();
@@ -69,7 +70,7 @@ function createPopoverDOM() {
     <div class="dict-footer">
       <button class="btn primary dict-anki-btn" id="dict-anki-btn">
         <span class="material-symbols-outlined" style="font-size: 14px;">star</span>
-        <span id="dict-btn-text">보관</span>
+        <span id="dict-btn-text">보관 (A)</span>
       </button>
     </div>
   `;
@@ -84,7 +85,7 @@ function createPopoverDOM() {
     if (word) playWordPronunciation(word);
   });
 
-  // Queue Save (보관)
+  // Queue / Anki Save
   document.getElementById("dict-anki-btn").addEventListener("click", async (e) => {
     e.stopPropagation();
     await saveWordToQueue();
@@ -114,32 +115,112 @@ function highlightRangeTokens(range) {
   });
 }
 
+function getExpandedWordSelection(selection, container) {
+  if (!selection || selection.rangeCount === 0) return null;
+  const range = selection.getRangeAt(0);
+  if (range.collapsed) return null;
+
+  const root = container || range.commonAncestorContainer;
+  const subItem = (root.nodeType === Node.ELEMENT_NODE ? root : root.parentElement)?.closest(".subtitle-item, #overlay-en, .text-en");
+  if (!subItem) return null;
+
+  const allTokens = Array.from(subItem.querySelectorAll(".word-token"));
+  if (allTokens.length === 0) {
+    const rawText = selection.toString().trim();
+    return rawText ? { text: rawText, tokens: [], rect: range.getBoundingClientRect(), range } : null;
+  }
+
+  // Find start token and end token that intersect with range
+  let startIdx = -1;
+  let endIdx = -1;
+
+  allTokens.forEach((token, idx) => {
+    if (range.intersectsNode(token)) {
+      if (startIdx === -1) startIdx = idx;
+      endIdx = idx;
+    }
+  });
+
+  // Boundary fallback
+  if (startIdx === -1 || endIdx === -1) {
+    const startNode = range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer : range.startContainer.parentElement;
+    const endNode = range.endContainer.nodeType === Node.ELEMENT_NODE ? range.endContainer : range.endContainer.parentElement;
+    const startToken = startNode?.closest(".word-token");
+    const endToken = endNode?.closest(".word-token");
+    if (startToken) startIdx = allTokens.indexOf(startToken);
+    if (endToken) endIdx = allTokens.indexOf(endToken);
+  }
+
+  if (startIdx !== -1 && endIdx !== -1) {
+    const minIdx = Math.min(startIdx, endIdx);
+    const maxIdx = Math.max(startIdx, endIdx);
+    const selectedTokens = allTokens.slice(minIdx, maxIdx + 1);
+    const expandedText = selectedTokens.map(t => t.getAttribute("data-word") || t.textContent.trim()).join(" ").trim();
+    
+    // Calculate combined bounding rect
+    let minLeft = Infinity, minTop = Infinity, maxRight = -Infinity, maxBottom = -Infinity;
+    selectedTokens.forEach(t => {
+      const r = t.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) {
+        minLeft = Math.min(minLeft, r.left);
+        minTop = Math.min(minTop, r.top);
+        maxRight = Math.max(maxRight, r.right);
+        maxBottom = Math.max(maxBottom, r.bottom);
+      }
+    });
+
+    const rect = (minLeft !== Infinity) ? {
+      left: minLeft,
+      top: minTop,
+      right: maxRight,
+      bottom: maxBottom,
+      width: maxRight - minLeft,
+      height: maxBottom - minTop
+    } : range.getBoundingClientRect();
+
+    return {
+      text: expandedText,
+      tokens: selectedTokens,
+      rect,
+      range
+    };
+  }
+
+  const raw = selection.toString().trim();
+  return raw ? { text: raw, tokens: [], rect: range.getBoundingClientRect(), range } : null;
+}
+
 function bindGlobalEvents() {
-  // 1. Text drag / selection lookup for multi-word expressions
+  // 1. Text drag / selection lookup with Word-Boundary Snapping
   document.addEventListener("mouseup", (e) => {
     if (popoverEl && popoverEl.contains(e.target)) return;
     
     const selection = window.getSelection();
-    const selectedText = selection.toString().trim();
-    if (selectedText && selectedText.length >= 2) {
-      const targetContainer = e.target.closest(".subtitle-item") || e.target.closest("#overlay-en") || e.target.closest(".text-en");
-      if (targetContainer) {
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) {
-          const subItem = e.target.closest(".subtitle-item");
-          let context = selectedText;
-          if (subItem) {
-            const enEl = subItem.querySelector(".text-en");
-            if (enEl) context = enEl.textContent;
-          }
-          showWordDictionary(selectedText, context, null, rect, range);
-          // Clear native selection so only our clean styled underline is shown!
-          setTimeout(() => {
-            window.getSelection().removeAllRanges();
-          }, 50);
-        }
+    if (!selection || selection.isCollapsed) return;
+
+    const targetContainer = e.target.closest(".subtitle-item") || e.target.closest("#overlay-en") || e.target.closest(".text-en");
+    if (!targetContainer) return;
+
+    const expanded = getExpandedWordSelection(selection, targetContainer);
+    if (expanded && expanded.text && expanded.text.length >= 2) {
+      const subItem = targetContainer.closest(".subtitle-item");
+      let context = expanded.text;
+      if (subItem) {
+        const enEl = subItem.querySelector(".text-en");
+        if (enEl) context = enEl.textContent;
       }
+
+      clearSelectedTokens();
+      if (expanded.tokens.length > 0) {
+        expanded.tokens.forEach(t => t.classList.add("token-selected"));
+      }
+
+      showWordDictionary(expanded.text, context, null, expanded.rect, expanded.range);
+
+      // Clear native selection so only clean styled tokens are highlighted
+      setTimeout(() => {
+        window.getSelection().removeAllRanges();
+      }, 50);
     }
   });
 
@@ -150,12 +231,27 @@ function bindGlobalEvents() {
     hidePopover();
   });
 
-  // 3. ESC to close
+  // 3. Keydown shortcuts (ESC & A/ㅁ)
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && popoverEl && popoverEl.style.display !== "none") {
+    if (!popoverEl || popoverEl.style.display === "none") return;
+
+    if (e.key === "Escape") {
       hidePopover();
+      return;
     }
-  });
+
+    // 4. 'A' or 'ㅁ' to save word when popover is visible
+    const active = document.activeElement;
+    if (active && (active.isContentEditable || active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
+      return;
+    }
+    const key = (e.key || "").toLowerCase();
+    if (key === "a" || key === "ㅁ" || e.code === "KeyA") {
+      e.preventDefault();
+      e.stopPropagation();
+      saveWordToQueue();
+    }
+  }, true);
 }
 
 let currentContext = "";
@@ -185,11 +281,29 @@ export async function showWordDictionary(word, context, targetElement, customRec
   document.getElementById("dict-content").style.display = "none";
   document.getElementById("dict-phrase-row").style.display = "none";
 
+  const savedList = getSavedVocab ? getSavedVocab() : [];
+  const existingSaved = savedList.find(v => v.word && v.word.toLowerCase() === cleanWord.toLowerCase());
+
   const ankiBtn = document.getElementById("dict-anki-btn");
-  ankiBtn.disabled = false;
-  ankiBtn.innerHTML = "<span class=\"material-symbols-outlined\" style=\"font-size: 14px;\">add</span> Anki 단어/표현장에 추가";
-  ankiBtn.style.backgroundColor = "";
-  ankiBtn.style.color = "";
+  if (ankiBtn) {
+    ankiBtn.disabled = false;
+    if (existingSaved && existingSaved.extracted) {
+      ankiBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px; color: var(--success);">check_circle</span> <span id="dict-btn-text">Anki 저장됨</span>';
+      ankiBtn.style.backgroundColor = "rgba(52, 211, 153, 0.15)";
+      ankiBtn.style.color = "#34d399";
+      ankiBtn.style.borderColor = "rgba(52, 211, 153, 0.4)";
+    } else if (existingSaved) {
+      ankiBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px; color: #fbbf24;">star</span> <span id="dict-btn-text">보관됨 (A)</span>';
+      ankiBtn.style.backgroundColor = "rgba(251, 191, 36, 0.15)";
+      ankiBtn.style.color = "#fbbf24";
+      ankiBtn.style.borderColor = "rgba(251, 191, 36, 0.4)";
+    } else {
+      ankiBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px;">star</span> <span id="dict-btn-text">보관 (A)</span>';
+      ankiBtn.style.backgroundColor = "";
+      ankiBtn.style.color = "";
+      ankiBtn.style.borderColor = "";
+    }
+  }
 
   // Position Popover
   positionPopover(targetElement, customRect);
@@ -197,7 +311,8 @@ export async function showWordDictionary(word, context, targetElement, customRec
   popoverEl.style.display = "block";
 
   try {
-    const data = await lookupWord(cleanWord, currentContext);
+    currentLookupPromise = lookupWord(cleanWord, currentContext);
+    const data = await currentLookupPromise;
     currentWordData = data;
     renderWordDetails(data);
   } catch (err) {
@@ -313,6 +428,9 @@ export function hidePopover() {
   if (popoverEl) {
     popoverEl.style.display = "none";
   }
+  if (document.activeElement && popoverEl && popoverEl.contains(document.activeElement)) {
+    document.activeElement.blur();
+  }
 }
 
 function playWordPronunciation(word) {
@@ -326,6 +444,22 @@ function playWordPronunciation(word) {
 }
 
 async function saveWordToQueue() {
+  const ankiBtn = document.getElementById("dict-anki-btn");
+  const btnText = document.getElementById("dict-btn-text");
+
+  // If lookup is still pending, wait for it
+  if (!currentWordData && currentLookupPromise) {
+    if (btnText) btnText.textContent = "조회 및 저장 중...";
+    if (ankiBtn) ankiBtn.disabled = true;
+    try {
+      const data = await currentLookupPromise;
+      currentWordData = data;
+      renderWordDetails(data);
+    } catch (e) {
+      console.warn("Lookup wait failed:", e);
+    }
+  }
+
   const wordEl = document.getElementById("dict-word-text");
   const meaningEl = document.getElementById("dict-meaning-text");
   const posEl = document.getElementById("dict-pos-badge");
@@ -340,10 +474,12 @@ async function saveWordToQueue() {
   const exampleVal = exampleEl ? exampleEl.textContent.trim() : (currentWordData?.example || "");
   const explanationVal = explanationEl ? explanationEl.textContent.trim() : (currentWordData?.explanation || "");
 
-  if (!wordVal) return;
+  if (!wordVal) {
+    if (ankiBtn) ankiBtn.disabled = false;
+    return;
+  }
 
-  const ankiBtn = document.getElementById("dict-anki-btn");
-  const btnText = document.getElementById("dict-btn-text");
+  if (ankiBtn) ankiBtn.disabled = true;
 
   const payload = {
     word: wordVal,
@@ -355,12 +491,55 @@ async function saveWordToQueue() {
     extracted: false
   };
 
-  // Save to local storage queue
+  // 1. Always save to local storage queue first
   saveVocabItem(payload);
 
+  // Trigger immediate subtitle re-render for yellow highlight!
+  import('./subtitles.js').then(m => {
+    m.renderSubtitles();
+    if (state.currentSubtitleIndex !== -1) {
+      m.updateActiveSubtitleUI(state.currentSubtitleIndex);
+    }
+  });
+
+  // 2. If Anki is connected, directly send card to Anki!
+  if (state && state.ankiConnected) {
+    if (btnText) btnText.textContent = "Anki 전송 중...";
+    try {
+      const res = await addVocabCardToAnki(payload);
+      if (res && res.success) {
+        saveVocabItem({ ...payload, extracted: true, note_id: res.note_id });
+        if (btnText) btnText.textContent = "Anki 저장 완료!";
+        if (ankiBtn) {
+          ankiBtn.style.backgroundColor = "var(--success)";
+          ankiBtn.style.borderColor = "var(--success)";
+        }
+        showDictToast(`'${wordVal}' 단어가 Anki 단어장에 등록되었습니다.`);
+        if (window._renderStarredList) window._renderStarredList();
+        if (window._updateStarredCounts) window._updateStarredCounts();
+        setTimeout(() => { hidePopover(); }, 400);
+        return;
+      } else if (res && res.duplicate) {
+        if (btnText) btnText.textContent = "이미 등록된 단어";
+        if (ankiBtn) {
+          ankiBtn.style.backgroundColor = "var(--bg-tertiary)";
+          ankiBtn.style.color = "var(--accent)";
+        }
+        showDictToast(`'${wordVal}' 단어는 이미 Anki에 등록되어 있습니다.`);
+        setTimeout(() => { hidePopover(); }, 600);
+        return;
+      }
+    } catch (ankiErr) {
+      console.warn("Direct Anki save failed, kept in queue:", ankiErr);
+    }
+  }
+
+  // 3. Fallback / Offline queue save
   if (btnText) btnText.textContent = "보관 완료!";
-  ankiBtn.style.backgroundColor = "var(--success)";
-  ankiBtn.style.borderColor = "var(--success)";
+  if (ankiBtn) {
+    ankiBtn.style.backgroundColor = "var(--success)";
+    ankiBtn.style.borderColor = "var(--success)";
+  }
 
   // Update Anki extraction panel if open
   if (window._renderStarredList) window._renderStarredList();
@@ -369,10 +548,8 @@ async function saveWordToQueue() {
   showDictToast(`'${wordVal}' 단어가 추출 대기열에 보관되었습니다.`);
 
   setTimeout(() => {
-    if (btnText) btnText.textContent = "보관됨";
-    ankiBtn.style.backgroundColor = "var(--bg-tertiary)";
-    ankiBtn.style.borderColor = "var(--border)";
-  }, 1500);
+    hidePopover();
+  }, 400);
 }
 
 function showDictToast(msg) {

@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-<link href="/css/styles.css?v=20260827_0120" rel="stylesheet">
+<link href="/css/styles.css?v=20260830_2120" rel="stylesheet">
 </head>
 <body>
 
@@ -137,6 +137,13 @@
           <span style="font-size: 11px; color: var(--text-muted); font-weight: 500;">속도</span>
           <input id="speed-slider" type="range" min="0.5" max="2.0" step="0.1" value="1.0" style="width: 44px;">
           <span id="speed-indicator" style="min-width: 30px; text-align: right; font-size: 11px; color: var(--text-secondary);">1.0x</span>
+        </div>
+
+        <!-- Fullscreen / Sidebar Toggle Button -->
+        <div class="control-group">
+          <button class="btn" id="theater-mode-btn" title="전체화면 / 사이드바 접기 (단축키: F)">
+            <span class="material-symbols-outlined" id="theater-icon" style="font-size: 18px; pointer-events: none;">fullscreen</span>
+          </button>
         </div>
       </div>
     </div>
@@ -467,6 +474,7 @@
           <div class="shortcut-row"><kbd>←</kbd><span>이전 문장/자막으로 이동</span></div>
           <div class="shortcut-row"><kbd>→</kbd><span>다음 문장/자막으로 이동</span></div>
           <div class="shortcut-row"><kbd>R</kbd><span>현재 1문장 무한 반복 (A-B Loop)</span></div>
+          <div class="shortcut-row"><kbd>F</kbd><span>전체화면 / 시네마 모드 (사이드바 접기)</span></div>
           <div class="shortcut-row"><kbd>[</kbd> / <kbd>-</kbd><span>재생 속도 느리게 (-0.1x)</span></div>
           <div class="shortcut-row"><kbd>]</kbd> / <kbd>+</kbd><span>재생 속도 빠르게 (+0.1x)</span></div>
         </div>
@@ -523,6 +531,6 @@
   });
 </script>
 <!-- Load App scripts -->
-<script type="module" src="/js/app.js?v=20260827_0120"></script>
+<script type="module" src="/js/app.js?v=20260830_2120"></script>
 </body>
 </html>

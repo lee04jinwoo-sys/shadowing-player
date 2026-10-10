@@ -2,7 +2,7 @@
 // subtitles.js — 자막 렌더링 & 동기화
 // ====================================
 
-import state, { saveStateToLocal } from './state.js';
+import state, { saveStateToLocal, getSavedVocab } from './state.js';
 
 // --- DOM References ---
 const subtitleList = document.getElementById("subtitle-list");
@@ -11,14 +11,68 @@ const overlayKr = document.getElementById("overlay-kr");
 const progressText = document.getElementById("progress-text");
 const progressBarFill = document.getElementById("progress-bar-fill");
 
-// --- Tokenize Words for Interactive Dictionary ---
+// --- Helper: Get Saved Vocab Words & Phrases (Split by extracted / pending) ---
+export function getSavedWordsData() {
+  const list = getSavedVocab ? getSavedVocab() : [];
+  const extractedWords = new Set();
+  const starredWords = new Set();
+  const extractedPhrases = [];
+  const starredPhrases = [];
+
+  list.forEach(item => {
+    if (item && item.word) {
+      const clean = item.word.toLowerCase().replace(/^[^\w\s'-]+|[^\w\s'-]+$/g, "").trim();
+      if (clean) {
+        if (item.extracted) {
+          if (clean.includes(" ")) extractedPhrases.push(clean);
+          else extractedWords.add(clean);
+        } else {
+          if (clean.includes(" ")) starredPhrases.push(clean);
+          else starredWords.add(clean);
+        }
+      }
+    }
+  });
+  return { extractedWords, starredWords, extractedPhrases, starredPhrases };
+}
+
+// --- Tokenize Words for Interactive Dictionary & Saved Word Highlighting ---
 export function formatEnglishWords(text) {
   if (!text) return "";
+  const { extractedWords, starredWords, extractedPhrases, starredPhrases } = getSavedWordsData();
+  const lowerText = text.toLowerCase();
+  
+  // Check multi-word phrase matching
+  const matchedExtractedPhrases = extractedPhrases.filter(p => lowerText.includes(p));
+  const matchedStarredPhrases = starredPhrases.filter(p => lowerText.includes(p));
+
   const clean = text.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim();
   return clean.split(/(\s+|[^\w\s'-]+)/).map(token => {
     const trimmed = token.trim();
     const isWord = /^[a-zA-Z0-9'-]+$/.test(trimmed);
     if (isWord && trimmed.length > 0) {
+      const lowerTrimmed = trimmed.toLowerCase();
+      
+      // 1. Extracted in Anki (Green) takes highest priority
+      let isExtracted = extractedWords.has(lowerTrimmed);
+      if (!isExtracted && matchedExtractedPhrases.length > 0) {
+        isExtracted = matchedExtractedPhrases.some(p => p.split(/\s+/).includes(lowerTrimmed));
+      }
+
+      if (isExtracted) {
+        return `<span class="word-token word-extracted" data-word="${trimmed}">${token}</span>`;
+      }
+
+      // 2. Starred / Pending in Queue (Yellow)
+      let isStarred = starredWords.has(lowerTrimmed);
+      if (!isStarred && matchedStarredPhrases.length > 0) {
+        isStarred = matchedStarredPhrases.some(p => p.split(/\s+/).includes(lowerTrimmed));
+      }
+
+      if (isStarred) {
+        return `<span class="word-token word-saved" data-word="${trimmed}">${token}</span>`;
+      }
+
       return `<span class="word-token" data-word="${trimmed}">${token}</span>`;
     }
     return token;
@@ -44,13 +98,19 @@ export function renderSubtitles() {
     const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
     const isExtracted = state.extractedSubtitles.has(idx);
-    const extractedBadge = isExtracted ? `<span class="material-symbols-outlined" style="font-size: 11px; margin-left: 4px; color: var(--success); vertical-align: middle;" title="Anki로 추출됨">check_circle</span>` : '';
-
     const isStarred = state.starredSubtitles.has(idx);
-    item.style.borderLeft = isStarred ? "3px solid #fbbf24" : "1px solid transparent";
+
+    // Green border for extracted, Yellow border for starred
+    if (isExtracted) {
+      item.style.borderLeft = "3px solid #22c55e";
+    } else if (isStarred) {
+      item.style.borderLeft = "3px solid #fbbf24";
+    } else {
+      item.style.borderLeft = "1px solid transparent";
+    }
 
     item.innerHTML = `
-      <div class="time-tag">${timeStr}${extractedBadge}</div>
+      <div class="time-tag">${timeStr}</div>
       <div class="text-en">${formatEnglishWords(sub.text_en)}</div>
       ${sub.text_kr ? `<div class="text-kr">${sub.text_kr}</div>` : ''}
     `;

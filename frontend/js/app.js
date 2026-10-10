@@ -901,12 +901,74 @@ function bindEvents() {
     });
   }
 
+  // Theater / Fullscreen Mode Toggle Button
+  const theaterBtn = document.getElementById("theater-mode-btn");
+  if (theaterBtn) {
+    theaterBtn.addEventListener("click", toggleTheaterMode);
+  }
+
   // Keyboard shortcuts
   document.addEventListener("keydown", handleKeyboardShortcuts);
   
   // Mode events (dictation, anki, etc.)
   bindModeEvents();
 }
+
+let theaterControlsTimer = null;
+
+export function toggleTheaterMode() {
+  const main = document.querySelector("main");
+  if (!main) return;
+  const isTheater = main.classList.toggle("theater-mode");
+  const theaterIcon = document.getElementById("theater-icon");
+  const theaterBtn = document.getElementById("theater-mode-btn");
+  const playerControls = document.querySelector(".player-controls");
+
+  if (theaterIcon) {
+    theaterIcon.textContent = isTheater ? "fullscreen_exit" : "fullscreen";
+  }
+  if (theaterBtn) {
+    theaterBtn.title = isTheater ? "기본 화면 / 사이드바 열기 (단축키: F)" : "전체화면 / 사이드바 접기 (단축키: F)";
+    theaterBtn.classList.toggle("active", isTheater);
+  }
+
+  // Always keep controls hidden when toggling
+  if (playerControls) {
+    playerControls.classList.remove("visible");
+  }
+  clearTimeout(theaterControlsTimer);
+}
+window._toggleTheaterMode = toggleTheaterMode;
+
+// Mouse move detection in theater mode to reveal controls ONLY when moving to the bottom edge
+document.addEventListener("mousemove", (e) => {
+  const main = document.querySelector("main");
+  if (!main || !main.classList.contains("theater-mode")) return;
+
+  const playerControls = document.querySelector(".player-controls");
+  if (!playerControls) return;
+
+  const windowHeight = window.innerHeight;
+  // Trigger ONLY when mouse cursor is near the very bottom (bottom 90px) or directly on the controls
+  if (e.clientY >= windowHeight - 90 || playerControls.contains(e.target)) {
+    playerControls.classList.add("visible");
+    clearTimeout(theaterControlsTimer);
+  } else {
+    clearTimeout(theaterControlsTimer);
+    theaterControlsTimer = setTimeout(() => {
+      playerControls.classList.remove("visible");
+    }, 150);
+  }
+});
+
+document.addEventListener("mouseleave", () => {
+  const main = document.querySelector("main");
+  if (!main || !main.classList.contains("theater-mode")) return;
+  const playerControls = document.querySelector(".player-controls");
+  if (playerControls) {
+    playerControls.classList.remove("visible");
+  }
+});
 
 function handleKeyboardShortcuts(e) {
   const activeEl = document.activeElement;
@@ -931,10 +993,15 @@ function handleKeyboardShortcuts(e) {
 
   const shortcutsModal = document.getElementById("shortcuts-modal");
 
-  // Escape key closes modals
+  // Escape key closes modals or exits theater mode
   if (e.code === "Escape") {
     if (shortcutsModal && shortcutsModal.style.display === "flex") {
       shortcutsModal.style.display = "none";
+      return;
+    }
+    const main = document.querySelector("main");
+    if (main && main.classList.contains("theater-mode")) {
+      toggleTheaterMode();
       return;
     }
   }
@@ -945,6 +1012,13 @@ function handleKeyboardShortcuts(e) {
     if (shortcutsModal) {
       shortcutsModal.style.display = (shortcutsModal.style.display === "flex") ? "none" : "flex";
     }
+    return;
+  }
+
+  // Korean layout shortcut for 'F' (ㄹ)
+  if (e.key === "ㄹ" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault();
+    toggleTheaterMode();
     return;
   }
 
@@ -964,7 +1038,18 @@ function handleKeyboardShortcuts(e) {
     case "KeyR":
       toggleABLoop();
       break;
+    case "KeyF":
+      e.preventDefault();
+      toggleTheaterMode();
+      break;
     case "KeyA":
+      const dictPopover = document.getElementById("dict-popover");
+      if (dictPopover && dictPopover.style.display !== "none") {
+        e.preventDefault();
+        const dictAnkiBtn = document.getElementById("dict-anki-btn");
+        if (dictAnkiBtn && !dictAnkiBtn.disabled) dictAnkiBtn.click();
+        break;
+      }
       if (state.currentSubtitleIndex !== -1) {
         e.preventDefault();
         toggleStar(state.currentSubtitleIndex);
