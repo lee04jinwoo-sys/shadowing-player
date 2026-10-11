@@ -694,7 +694,7 @@ function renderVocabList() {
       </div>
 
       <div style="margin-bottom: 6px;">
-        <textarea class="vocab-exp-input" rows="2" style="width: 100%; font-size: 12px; color: var(--text-secondary); background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; outline: none; resize: vertical;" placeholder="3단계 설명 (뉘앙스/유의어 비교/콜로케이션)">${v.explanation || ''}</textarea>
+        <textarea class="vocab-exp-input" rows="2" style="width: 100%; font-size: 12px; color: var(--text-secondary); background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; outline: none; resize: vertical;" placeholder="2단계 설명 (뜻·뉘앙스 / 콜로케이션)">${v.explanation || ''}</textarea>
       </div>
 
       <div>
@@ -742,7 +742,7 @@ function renderVocabList() {
 
       try {
         const res = await addVocabCardToAnki({
-          word, meaning, explanation, example, pos: v.pos || "", synonyms: v.synonyms || ""
+          word, meaning, explanation, example, pos: v.pos || ""
         });
         if (res.success) {
           updateSavedVocabItem(v.id, { extracted: true });
@@ -798,7 +798,6 @@ function getSavedVocabItemsData() {
     word: v.word || '',
     meaning: v.meaning || '',
     pos: v.pos || '',
-    synonyms: v.synonyms || '',
     example: v.example || '',
     explanation: v.explanation || '',
     item_type: 'vocab',
@@ -924,8 +923,7 @@ async function bulkExportVocabToAnki() {
           meaning: v.meaning,
           explanation: v.explanation || "",
           example: v.example || "",
-          pos: v.pos || "",
-          synonyms: v.synonyms || ""
+          pos: v.pos || ""
         });
         const isOk = (res === true) || (res && (res.success || res.duplicate || res.note_id));
         if (isOk) {

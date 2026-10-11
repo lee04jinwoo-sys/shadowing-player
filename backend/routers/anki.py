@@ -33,6 +33,9 @@ class VocabItem(BaseModel):
 class VocabModel(BaseModel):
     word: str
     meaning: str = ""
+    pos: Optional[str] = ""
+    example: Optional[str] = ""
+    explanation: Optional[str] = ""
 
 class BulkVocabModel(BaseModel):
     items: List[VocabItem]
@@ -62,7 +65,7 @@ def bulk_add_sentences(data: BulkSentenceModel):
 
 @router.post("/add-vocab")
 def add_vocab(data: VocabModel):
-    res = add_vocab_to_anki(data.word, data.meaning)
+    res = add_vocab_to_anki(data.word, data.meaning, data.pos, data.example, data.explanation)
     if res["success"]:
         return res
     else:

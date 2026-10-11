@@ -157,7 +157,7 @@ class NoteCompleter:
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=NOTE_COMPLETOR_MAX_WORKERS) as executor:
             prompt_template = """
-            다음 단어 데이터 리스트에 대해, 뜻, 품사, 유의어, 예문, 설명을 포함한 JSON 객체 리스트를 'vocab' 키에 담아 반환하세요.
+            다음 단어 데이터 리스트에 대해, 뜻, 품사, 예문, 설명을 포함한 JSON 객체 리스트를 'vocab' 키에 담아 반환하세요.
             이미 '뜻'이나 '단어' 정보가 있다면 이를 활용하여 내용을 완성하십시오.
             특히 '설명' 필드는 의미의 미세한 차이나 뉘앙스를 한국어로 상세히 설명해야 합니다.
 

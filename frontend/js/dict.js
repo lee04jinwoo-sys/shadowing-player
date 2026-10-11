@@ -55,11 +55,6 @@ function createPopoverDOM() {
           <span class="dict-explanation dict-editable" id="dict-explanation-text" contenteditable="true" spellcheck="false" title="클릭하여 뉘앙스/설명 수정"></span>
         </div>
 
-        <div class="dict-synonyms-row" id="dict-synonyms-row">
-          <span class="dict-synonyms-label">유의어</span>
-          <span class="dict-synonyms dict-editable" id="dict-synonyms-text" contenteditable="true" spellcheck="false" title="클릭하여 유의어 수정"></span>
-        </div>
-
         <div class="dict-example-row" id="dict-example-row">
           <span class="dict-example-label">예문</span>
           <span class="dict-example dict-editable" id="dict-example-text" contenteditable="true" spellcheck="false" title="클릭하여 예문 수정"></span>
@@ -362,15 +357,6 @@ function renderWordDetails(data) {
     expRow.style.display = "none";
   }
 
-  const synRow = document.getElementById("dict-synonyms-row");
-  if (data.synonyms && data.synonyms.length > 0) {
-    const synList = Array.isArray(data.synonyms) ? data.synonyms.join(", ") : data.synonyms;
-    document.getElementById("dict-synonyms-text").textContent = synList;
-    synRow.style.display = "flex";
-  } else {
-    synRow.style.display = "none";
-  }
-
   const exRow = document.getElementById("dict-example-row");
   if (data.example) {
     document.getElementById("dict-example-text").textContent = data.example;
@@ -463,14 +449,12 @@ async function saveWordToQueue() {
   const wordEl = document.getElementById("dict-word-text");
   const meaningEl = document.getElementById("dict-meaning-text");
   const posEl = document.getElementById("dict-pos-badge");
-  const synonymsEl = document.getElementById("dict-synonyms-text");
   const exampleEl = document.getElementById("dict-example-text");
   const explanationEl = document.getElementById("dict-explanation-text");
 
   const wordVal = wordEl ? wordEl.textContent.trim() : (currentWordData?.word || "");
   const meaningVal = meaningEl ? meaningEl.textContent.trim() : (currentWordData?.meaning || "");
   const posVal = posEl ? posEl.textContent.trim().toLowerCase() : (currentWordData?.pos || "");
-  const synonymsVal = synonymsEl ? synonymsEl.textContent.trim() : (currentWordData?.synonyms || "");
   const exampleVal = exampleEl ? exampleEl.textContent.trim() : (currentWordData?.example || "");
   const explanationVal = explanationEl ? explanationEl.textContent.trim() : (currentWordData?.explanation || "");
 
@@ -485,7 +469,6 @@ async function saveWordToQueue() {
     word: wordVal,
     meaning: meaningVal,
     pos: posVal,
-    synonyms: synonymsVal,
     example: exampleVal,
     explanation: explanationVal,
     extracted: false

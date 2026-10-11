@@ -30,3 +30,4 @@ videos/*
 
 node_modules/
 logs/
+.pytest_cache/

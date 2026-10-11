@@ -118,8 +118,12 @@ def bulk_add_sentences_to_anki(items: list) -> dict:
         return {"success": False, "error": str(e)}
 
 
-def add_vocab_to_anki(word: str, meaning: str = "") -> dict:
-    """Delegates single vocabulary creation to Anki Manager Gateway."""
+def add_vocab_to_anki(word: str, meaning: str = "", pos: str = "",
+                      example: str = "", explanation: str = "") -> dict:
+    """Delegates single vocabulary creation to Anki Manager Gateway.
+
+    유의어는 보내지 않는다 (Anki Manager의 유의어 금지 룰).
+    """
     clean_word = word.strip()
     if not clean_word:
         return {"success": False, "error": "단어가 비어있습니다."}
@@ -128,6 +132,9 @@ def add_vocab_to_anki(word: str, meaning: str = "") -> dict:
     payload = {
         "word": clean_word,
         "meaning": meaning or "",
+        "pos": pos or "",
+        "example": example or "",
+        "explanation": explanation or "",
         "auto_enrich": True,
         "generate_audio": True
     }
@@ -145,7 +152,8 @@ def add_vocab_to_anki(word: str, meaning: str = "") -> dict:
             return {
                 "success": True,
                 "added": [clean_word],
-                "note_id": data.get("note_id")
+                "note_id": data.get("note_id"),
+                "word": (data.get("data") or {}).get("word", clean_word)
             }
         error_detail = data.get("detail", "Failed to add vocab card")
         if "duplicate" in str(error_detail).lower():

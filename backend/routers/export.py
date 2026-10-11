@@ -349,7 +349,6 @@ def export_apkg(data: ExportRequest, background_tasks: BackgroundTasks):
                         if isinstance(enr, dict):
                             vocab_items[orig_idx].meaning = enr.get("뜻", vocab_items[orig_idx].meaning)
                             vocab_items[orig_idx].pos = enr.get("품사", vocab_items[orig_idx].pos)
-                            vocab_items[orig_idx].synonyms = enr.get("유의어", vocab_items[orig_idx].synonyms)
                             vocab_items[orig_idx].example = enr.get("예문", vocab_items[orig_idx].example)
                             vocab_items[orig_idx].explanation = enr.get("설명", vocab_items[orig_idx].explanation)
             except Exception as e:
@@ -375,7 +374,7 @@ def export_apkg(data: ExportRequest, background_tasks: BackgroundTasks):
                 return None
             meaning = (item.meaning or item.translation or "").strip()
             pos = (item.pos or "").strip()
-            synonyms = (item.synonyms or "").strip()
+            synonyms = ""  # 유의어 금지 룰 (Anki Manager와 동일)
             clean_ex = clean_vocab_example(item.example or "")
             explanation = (item.explanation or "").strip()
 
@@ -437,7 +436,7 @@ def export_csv(data: ExportRequest):
                     w_text,
                     item.meaning or item.translation or "",
                     item.pos or "",
-                    item.synonyms or "",
+                    "",  # Synonyms: 유의어 금지 룰
                     clean_ex,
                     item.explanation or "",
                     item.source or ""
