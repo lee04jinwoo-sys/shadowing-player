@@ -2,6 +2,7 @@
 // app.js — 앱 진입점 (초기화 + 이벤트 연결)
 // ====================================
 
+import { escapeHtml } from './escape.js';
 import state, { loadEpisodeState, saveStateToLocal, getGlobalExtracted, getGlobalCompletedEpisodes, addYouTubeToHistory, getYouTubeHistory, getLastWatched, saveLastWatched } from './state.js';
 import * as api from './api.js';
 import * as player from './player.js';
@@ -271,7 +272,7 @@ async function loadYouTubeVideo(url) {
                          .replace(/https?:\/\/youtu\.be\//i, '')
                          .trim();
 
-    let hintHtml = `<div style="padding: 20px; text-align: center; color: var(--danger);">유튜브 로드 실패: ${err.message}</div>`;
+    let hintHtml = `<div style="padding: 20px; text-align: center; color: var(--danger);">유튜브 로드 실패: ${escapeHtml(err.message)}</div>`;
 
     if (cleanTerm && cleanTerm.length < 11) {
       hintHtml += `
@@ -281,7 +282,7 @@ async function loadYouTubeVideo(url) {
           </div>
           <button class="btn primary" id="auto-explore-hint-btn" style="height: 32px; font-size: 12px; align-self: center; display: inline-flex; align-items: center; gap: 6px;">
             <span class="material-symbols-outlined" style="font-size: 16px;">search</span>
-            <span>'${cleanTerm}' 유튜브 탐색하기</span>
+            <span>'${escapeHtml(cleanTerm)}' 유튜브 탐색하기</span>
           </button>
         </div>
       `;
@@ -404,12 +405,12 @@ async function performExploreSearch(query) {
         card.className = "explore-video-card";
         card.innerHTML = `
           <div class="explore-card-thumb-wrap">
-            <img class="explore-card-thumb" src="${item.thumbnail}" alt="${item.title}" loading="lazy">
-            ${item.duration_str ? `<span class="explore-card-duration">${item.duration_str}</span>` : ''}
+            <img class="explore-card-thumb" src="${escapeHtml(item.thumbnail)}" alt="${escapeHtml(item.title)}" loading="lazy">
+            ${item.duration_str ? `<span class="explore-card-duration">${escapeHtml(item.duration_str)}</span>` : ''}
           </div>
           <div class="explore-card-body">
-            <div class="explore-card-title" title="${item.title}">${item.title}</div>
-            <div class="explore-card-channel">${item.channel}</div>
+            <div class="explore-card-title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
+            <div class="explore-card-channel">${escapeHtml(item.channel)}</div>
             <div class="explore-card-action">
               <span class="material-symbols-outlined" style="font-size: 14px;">bolt</span>
               <span>섀도잉 시작</span>
@@ -432,7 +433,7 @@ async function performExploreSearch(query) {
     if (exploreVideoGrid) {
       exploreVideoGrid.innerHTML = `
         <div style="grid-column: 1 / -1; text-align: center; color: var(--danger); padding: 50px 0; font-size: 14px;">
-          검색 중 오류가 발생했습니다: ${err.message}
+          검색 중 오류가 발생했습니다: ${escapeHtml(err.message)}
         </div>
       `;
     }
@@ -472,8 +473,8 @@ async function loadSubscriptionsBar() {
       chip.dataset.channelId = ch.channel_id;
       chip.dataset.channelTitle = ch.title;
       chip.innerHTML = `
-        ${ch.thumbnail ? `<img src="${ch.thumbnail}" class="explore-sub-chip-thumb" alt="">` : ''}
-        <span>${ch.title}</span>
+        ${ch.thumbnail ? `<img src="${escapeHtml(ch.thumbnail)}" class="explore-sub-chip-thumb" alt="">` : ''}
+        <span>${escapeHtml(ch.title)}</span>
       `;
 
       chip.addEventListener("click", () => {
@@ -501,7 +502,7 @@ async function loadChannelVideos(channelId, channelTitle) {
       if (exploreVideoGrid) {
         exploreVideoGrid.innerHTML = `
           <div style="grid-column: 1 / -1; text-align: center; color: var(--text-secondary); padding: 50px 0; font-size: 14px;">
-            '${channelTitle}' 채널의 영상을 불러오지 못했습니다.
+            '${escapeHtml(channelTitle)}' 채널의 영상을 불러오지 못했습니다.
           </div>
         `;
       }
@@ -515,12 +516,12 @@ async function loadChannelVideos(channelId, channelTitle) {
         card.className = "explore-video-card";
         card.innerHTML = `
           <div class="explore-card-thumb-wrap">
-            <img class="explore-card-thumb" src="${item.thumbnail}" alt="${item.title}" loading="lazy">
-            ${item.duration_str ? `<span class="explore-card-duration">${item.duration_str}</span>` : ''}
+            <img class="explore-card-thumb" src="${escapeHtml(item.thumbnail)}" alt="${escapeHtml(item.title)}" loading="lazy">
+            ${item.duration_str ? `<span class="explore-card-duration">${escapeHtml(item.duration_str)}</span>` : ''}
           </div>
           <div class="explore-card-body">
-            <div class="explore-card-title" title="${item.title}">${item.title}</div>
-            <div class="explore-card-channel">${item.channel || channelTitle}</div>
+            <div class="explore-card-title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
+            <div class="explore-card-channel">${escapeHtml(item.channel || channelTitle)}</div>
             <div class="explore-card-action">
               <span class="material-symbols-outlined" style="font-size: 14px;">bolt</span>
               <span>섀도잉 시작</span>

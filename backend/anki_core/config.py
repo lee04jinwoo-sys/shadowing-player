@@ -1,31 +1,19 @@
 """Anki Core configuration constants.
 
-All Anki deck names, model names, TTS settings, and AI prompt configurations.
+TTS voices and AI prompt settings for the APKG export.
+Card creation rules live in Anki Manager; NOTE_COMPLETOR_SYS_INSTRUCT is a copy of its prompt.
 """
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- AnkiConnect URL ---
-ANKI_URL: str = os.getenv("ANKI_URL", "http://localhost:8765")
-
-# --- Deck and Model name definitions ---
-DECK_SENTENCE: str = "1. Language::1.1. English::Sentence"
-MODEL_SENTENCE: str = "English Sentence"
-DECK_VOCAB: str = "1. Language::1.1. English::Vocabulary"
-MODEL_VOCAB: str = "English Vocabulary"
-
 # --- AI model settings ---
 NOTE_COMPLETOR_MODEL: str = os.getenv("NOTE_COMPLETOR_MODEL", "gemini-flash-lite-latest")
 GEMINI_DEFAULT_TEMPERATURE: float = 0.3
 NOTE_COMPLETOR_MAX_WORKERS: int = 2
 
-# --- TTS voice and language settings ---
-TTS_SENTENCE_LANGUAGE_CODE: str = "en-US"
-TTS_VOCAB_LANGUAGE: str = "en"
-TTS_VOCAB_TLD: str = "com"
-
+# --- TTS voices (APKG export, sentence audio) ---
 VOICE_LIST: list[str] = [
     "en-US-Chirp3-HD-Vindemiatrix",
     "en-US-Chirp3-HD-Achernar",
@@ -38,10 +26,6 @@ VOICE_LIST: list[str] = [
     "en-AU-Chirp3-HD-Kore",
     "en-AU-Chirp3-HD-Enceladus",
 ]
-
-# --- Audio settings ---
-TEMP_DIR: str = "/tmp"
-AUDIO_ADDER_MAX_WORKERS: int = 5
 
 # --- Anki Manager System Instruction prompt ---
 # Anki Manager/config.py의 NOTE_COMPLETOR_SYS_INSTRUCT와 같아야 한다 (2026-10-11 동기화).

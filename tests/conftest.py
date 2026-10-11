@@ -26,15 +26,17 @@ class _BlockedSession:
 
 @pytest.fixture(autouse=True)
 def block_anki_network(monkeypatch, tmp_path):
+    import requests
     from backend import anki_bridge
-    from backend.anki_core import connector
 
     monkeypatch.setattr(anki_bridge, "_SESSION", _BlockedSession())
 
-    def _blocked_invoke(action, **params):
-        raise AssertionError(f"Unmocked direct AnkiConnect call: {action}")
+    # 직접 AnkiConnect(8765)로 나가는 요청도 막는다
+    def _blocked_post(self, url, *args, **kwargs):
+        raise AssertionError(f"Unmocked HTTP POST: {url}")
 
-    monkeypatch.setattr(connector.AnkiConnector, "invoke", staticmethod(_blocked_invoke))
+    monkeypatch.setattr(requests.Session, "post", _blocked_post)
+    monkeypatch.setattr(requests, "post", lambda url, *a, **k: _blocked_post(None, url))
 
     # 사전 캐시는 사용자의 실제 캐시 DB 대신 임시 파일을 쓴다
     from backend.routers import dict as dict_router

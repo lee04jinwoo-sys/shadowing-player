@@ -1,6 +1,7 @@
 """
 Google OAuth 2.0 Authentication Router for YouTube Subscriptions
 """
+import html
 import json
 import logging
 import urllib.parse
@@ -82,7 +83,7 @@ def google_oauth_callback(code: Optional[str] = None, error: Optional[str] = Non
     """Google OAuth 인가 코드 수신 및 Access Token 교환"""
     if error or not code:
         return HTMLResponse(
-            f"<html><body><h3>Google 연동 취소 또는 실패: {error or 'No code'}</h3><script>setTimeout(() => window.close(), 3000);</script></body></html>"
+            f"<html><body><h3>Google 연동 취소 또는 실패: {html.escape(error or 'No code')}</h3><script>setTimeout(() => window.close(), 3000);</script></body></html>"
         )
 
     settings = load_settings()
@@ -146,7 +147,7 @@ def google_oauth_callback(code: Optional[str] = None, error: Optional[str] = Non
 
     except Exception as e:
         logger.error(f"Google OAuth callback error: {e}")
-        return HTMLResponse(f"<html><body><h3>토큰 교환 실패: {e}</h3></body></html>")
+        return HTMLResponse(f"<html><body><h3>토큰 교환 실패: {html.escape(str(e))}</h3></body></html>")
 
 
 @router.post("/token")

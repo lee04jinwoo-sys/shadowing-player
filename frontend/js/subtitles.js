@@ -2,6 +2,7 @@
 // subtitles.js — 자막 렌더링 & 동기화
 // ====================================
 
+import { escapeHtml } from './escape.js';
 import state, { saveStateToLocal, getSavedVocab } from './state.js';
 
 // --- DOM References ---
@@ -60,7 +61,7 @@ export function formatEnglishWords(text) {
       }
 
       if (isExtracted) {
-        return `<span class="word-token word-extracted" data-word="${trimmed}">${token}</span>`;
+        return `<span class="word-token word-extracted" data-word="${escapeHtml(trimmed)}">${escapeHtml(token)}</span>`;
       }
 
       // 2. Starred / Pending in Queue (Yellow)
@@ -70,12 +71,12 @@ export function formatEnglishWords(text) {
       }
 
       if (isStarred) {
-        return `<span class="word-token word-saved" data-word="${trimmed}">${token}</span>`;
+        return `<span class="word-token word-saved" data-word="${escapeHtml(trimmed)}">${escapeHtml(token)}</span>`;
       }
 
-      return `<span class="word-token" data-word="${trimmed}">${token}</span>`;
+      return `<span class="word-token" data-word="${escapeHtml(trimmed)}">${escapeHtml(token)}</span>`;
     }
-    return token;
+    return escapeHtml(token);
   }).join("");
 }
 
@@ -112,7 +113,7 @@ export function renderSubtitles() {
     item.innerHTML = `
       <div class="time-tag">${timeStr}</div>
       <div class="text-en">${formatEnglishWords(sub.text_en)}</div>
-      ${sub.text_kr ? `<div class="text-kr">${sub.text_kr}</div>` : ''}
+      ${sub.text_kr ? `<div class="text-kr">${escapeHtml(sub.text_kr)}</div>` : ''}
     `;
 
     item.addEventListener("click", (e) => {

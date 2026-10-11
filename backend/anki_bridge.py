@@ -80,44 +80,6 @@ def add_sentence_to_anki(sentence: str, translation: str = "") -> dict:
         return {"success": False, "error": str(e)}
 
 
-def bulk_add_sentences_to_anki(items: list) -> dict:
-    """Delegates bulk sentence creation to Anki Manager Gateway."""
-    if not items:
-        return {"success": True, "count": 0}
-
-    url = f"{ANKI_MANAGER_URL}/api/cards/sentence/bulk"
-    formatted_items = [
-        {"sentence": item.get("sentence", "").strip(), "translation": item.get("translation", "").strip()}
-        for item in items
-        if item.get("sentence", "").strip()
-    ]
-
-    payload = {
-        "items": formatted_items,
-        "auto_enrich": True,
-        "generate_audio": True
-    }
-
-    try:
-        res = _SESSION.post(url, json=payload, timeout=_TIMEOUT_SEC * 2)
-        data = res.json()
-        if res.status_code == 200:
-            return {
-                "success": True,
-                "count": data.get("count", 0),
-                "total": data.get("total", len(items))
-            }
-        return {"success": False, "error": data.get("detail", "Failed to bulk add sentences")}
-    except requests.exceptions.ConnectionError:
-        return {
-            "success": False,
-            "error": "Anki Manager 서버(http://127.0.0.1:8001)에 연결할 수 없습니다. Anki Manager를 실행해주세요."
-        }
-    except Exception as e:
-        logger.error(f"Error in bulk_add_sentences_to_anki gateway call: {e}")
-        return {"success": False, "error": str(e)}
-
-
 def add_vocab_to_anki(word: str, meaning: str = "", pos: str = "",
                       example: str = "", explanation: str = "") -> dict:
     """Delegates single vocabulary creation to Anki Manager Gateway.
@@ -170,50 +132,4 @@ def add_vocab_to_anki(word: str, meaning: str = "", pos: str = "",
         }
     except Exception as e:
         logger.error(f"Error in add_vocab_to_anki gateway call: {e}")
-        return {"success": False, "error": str(e)}
-
-
-def bulk_add_vocab_to_anki(items: list) -> dict:
-    """Delegates bulk vocabulary creation to Anki Manager Gateway."""
-    if not items:
-        return {"success": True, "count": 0}
-
-    url = f"{ANKI_MANAGER_URL}/api/cards/vocab/bulk"
-    formatted_items = []
-    for item in items:
-        w = item.get("word") or item.get("단어") or ""
-        if not w.strip():
-            continue
-        formatted_items.append({
-            "word": w.strip(),
-            "meaning": item.get("meaning") or item.get("뜻") or "",
-            "pos": item.get("pos") or item.get("품사") or "",
-            "synonyms": "", # Forced empty
-            "example": item.get("example") or item.get("예문") or "",
-            "explanation": item.get("explanation") or item.get("설명") or ""
-        })
-
-    payload = {
-        "items": formatted_items,
-        "auto_enrich": False,
-        "generate_audio": True
-    }
-
-    try:
-        res = _SESSION.post(url, json=payload, timeout=_TIMEOUT_SEC * 2)
-        data = res.json()
-        if res.status_code == 200:
-            return {
-                "success": True,
-                "count": data.get("count", 0),
-                "total": data.get("total", len(items))
-            }
-        return {"success": False, "error": data.get("detail", "Failed to bulk add vocab cards")}
-    except requests.exceptions.ConnectionError:
-        return {
-            "success": False,
-            "error": "Anki Manager 서버(http://127.0.0.1:8001)에 연결할 수 없습니다. Anki Manager를 실행해주세요."
-        }
-    except Exception as e:
-        logger.error(f"Error in bulk_add_vocab_to_anki gateway call: {e}")
         return {"success": False, "error": str(e)}

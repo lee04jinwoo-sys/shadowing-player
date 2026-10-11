@@ -1,6 +1,7 @@
+import { escapeHtml } from './escape.js';
 import state, { saveStateToLocal, getSavedVocab, updateSavedVocabItem, deleteSavedVocabItem } from './state.js';
 import { renderSubtitles, updateActiveSubtitleUI, updateSubVisibility, toggleStar, formatTime } from './subtitles.js';
-import { addSentenceToAnki, bulkAddSentencesToAnki, bulkAddVocabToAnki, addVocabCardToAnki, getAIExplanation } from './api.js';
+import { addSentenceToAnki, addVocabCardToAnki, getAIExplanation } from './api.js';
 
 // --- DOM References ---
 const modeListening = document.getElementById("mode-listening");
@@ -148,7 +149,7 @@ export function bindModeEvents() {
       try {
         const data = await getAIExplanation(sub.text_en);
         if (data.success && data.explanation) {
-          aiExplanationBox.innerHTML = data.explanation
+          aiExplanationBox.innerHTML = escapeHtml(data.explanation)
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
             .replace(/\n/g, '<br>');
@@ -385,11 +386,11 @@ function checkDictationAnswer() {
   const comparison = compareStrings(sub.text_en, typed);
   
   dictationResultBox.innerHTML = comparison.map(item => {
-    if (item.status === "correct") return `<span class="word-correct">${item.word}</span>`;
-    if (item.status === "wrong") return `<span class="word-wrong" title="입력값: ${item.typed}">${item.word}</span>`;
-    if (item.status === "missing") return `<span class="word-missing" title="놓친 단어">${item.word}</span>`;
-    if (item.status === "extra") return `<span class="word-extra" title="추가된 단어">${item.word}</span>`;
-    return item.word;
+    if (item.status === "correct") return `<span class="word-correct">${escapeHtml(item.word)}</span>`;
+    if (item.status === "wrong") return `<span class="word-wrong" title="입력값: ${escapeHtml(item.typed)}">${escapeHtml(item.word)}</span>`;
+    if (item.status === "missing") return `<span class="word-missing" title="놓친 단어">${escapeHtml(item.word)}</span>`;
+    if (item.status === "extra") return `<span class="word-extra" title="추가된 단어">${escapeHtml(item.word)}</span>`;
+    return escapeHtml(item.word);
   }).join(" ");
 
   // STT Score Calculation
@@ -576,8 +577,8 @@ function renderSentencesList() {
           <button class="btn remove-star-btn" data-idx="${idx}" style="height: 24px; padding: 0 8px; font-size: 11px; background: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); border-radius: 4px; white-space: nowrap; cursor: pointer;">삭제</button>
         </div>
       </div>
-      <textarea class="starred-sentence-input" data-idx="${idx}" rows="2" style="width: 100%; background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 14px; font-family: var(--font-ui); outline: none; resize: vertical;" placeholder="영어 문장">${customText}</textarea>
-      <input type="text" class="starred-translation-input" data-idx="${idx}" value="${customTrans}" placeholder="한국어 뜻 (비어있으면 Anki 전송 시 AI 자동 번역)" style="width: 100%; font-size: 13px; color: #34d399; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; margin-top: 6px; outline: none;">
+      <textarea class="starred-sentence-input" data-idx="${idx}" rows="2" style="width: 100%; background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 14px; font-family: var(--font-ui); outline: none; resize: vertical;" placeholder="영어 문장">${escapeHtml(customText)}</textarea>
+      <input type="text" class="starred-translation-input" data-idx="${idx}" value="${escapeHtml(customTrans)}" placeholder="한국어 뜻 (비어있으면 Anki 전송 시 AI 자동 번역)" style="width: 100%; font-size: 13px; color: #34d399; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; margin-top: 6px; outline: none;">
     `;
 
     item.querySelector('.starred-sentence-input').addEventListener('input', (e) => {
@@ -681,7 +682,7 @@ function renderVocabList() {
     vCard.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px;">
         <div style="display: flex; align-items: center; gap: 6px; flex: 1;">
-          <input type="text" class="vocab-word-input" value="${v.word || ''}" style="font-weight: 600; font-size: 14px; color: var(--text-primary); background: transparent; border: 1px dashed rgba(255,255,255,0.15); border-radius: 4px; padding: 2px 6px; width: 100%; outline: none;" placeholder="단어/표현">
+          <input type="text" class="vocab-word-input" value="${escapeHtml(v.word)}" style="font-weight: 600; font-size: 14px; color: var(--text-primary); background: transparent; border: 1px dashed rgba(255,255,255,0.15); border-radius: 4px; padding: 2px 6px; width: 100%; outline: none;" placeholder="단어/표현">
         </div>
         <div style="display: flex; gap: 4px; align-items: center; flex-shrink: 0;">
           <button class="btn extract-vocab-btn" style="height: 24px; padding: 0 8px; font-size: 11px; background: rgba(167, 139, 250, 0.15); color: #c4b5fd; border: 1px solid rgba(167, 139, 250, 0.3); border-radius: 4px; white-space: nowrap; cursor: pointer;">${v.extracted ? 'Anki 재전송' : 'Anki 전송'}</button>
@@ -690,15 +691,15 @@ function renderVocabList() {
       </div>
       
       <div style="margin-bottom: 6px;">
-        <input type="text" class="vocab-meaning-input" value="${v.meaning || ''}" style="width: 100%; font-size: 13px; font-weight: 500; color: #34d399; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; outline: none;" placeholder="뜻/해석">
+        <input type="text" class="vocab-meaning-input" value="${escapeHtml(v.meaning)}" style="width: 100%; font-size: 13px; font-weight: 500; color: #34d399; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; outline: none;" placeholder="뜻/해석">
       </div>
 
       <div style="margin-bottom: 6px;">
-        <textarea class="vocab-exp-input" rows="2" style="width: 100%; font-size: 12px; color: var(--text-secondary); background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; outline: none; resize: vertical;" placeholder="2단계 설명 (뜻·뉘앙스 / 콜로케이션)">${v.explanation || ''}</textarea>
+        <textarea class="vocab-exp-input" rows="2" style="width: 100%; font-size: 12px; color: var(--text-secondary); background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; outline: none; resize: vertical;" placeholder="2단계 설명 (뜻·뉘앙스 / 콜로케이션)">${escapeHtml(v.explanation)}</textarea>
       </div>
 
       <div>
-        <input type="text" class="vocab-ex-input" value="${v.example || ''}" style="width: 100%; font-size: 11px; font-style: italic; color: var(--text-muted); background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; outline: none;" placeholder="예문">
+        <input type="text" class="vocab-ex-input" value="${escapeHtml(v.example)}" style="width: 100%; font-size: 11px; font-style: italic; color: var(--text-muted); background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; outline: none;" placeholder="예문">
       </div>
     `;
 

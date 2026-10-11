@@ -77,29 +77,6 @@ export async function addSentenceToAnki(sentence, translation = "") {
   }
 }
 
-export async function bulkAddSentencesToAnki(items) {
-  const res = await fetch("/api/anki/bulk-add", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items })
-  });
-  if (!res.ok) throw new Error("Bulk add failed");
-  return await res.json();
-}
-
-export async function bulkAddVocabToAnki(items) {
-  const res = await fetch("/api/anki/bulk-add-vocab", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items })
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.detail || "단어 일괄 Anki 전송 실패");
-  }
-  return await res.json();
-}
-
 export async function getAIExplanation(sentence) {
   const res = await fetch("/api/ai/explain", {
     method: "POST",

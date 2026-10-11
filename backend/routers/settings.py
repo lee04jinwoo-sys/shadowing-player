@@ -28,7 +28,6 @@ class SettingsResponse(BaseModel):
     """Current application settings."""
     google_api_key: str = ""
     video_dir: str = ""
-    anki_url: str = "http://localhost:8765"
     log_path: str = ""
 
 
@@ -36,7 +35,6 @@ class SettingsUpdateRequest(BaseModel):
     """Request body for updating settings."""
     google_api_key: Optional[str] = None
     video_dir: Optional[str] = None
-    anki_url: Optional[str] = None
 
 
 @router.api_route("/", methods=["GET", "HEAD"])
@@ -46,7 +44,6 @@ def get_settings() -> SettingsResponse:
     return SettingsResponse(
         google_api_key=_mask_api_key(settings.get("google_api_key", "")),
         video_dir=settings.get("video_dir", ""),
-        anki_url=settings.get("anki_url", "http://localhost:8765"),
         log_path=str(LOG_FILE_PATH),
     )
 
@@ -74,9 +71,6 @@ def update_settings(req: SettingsUpdateRequest) -> dict:
                     detail=f"Cannot create video directory: {e}",
                 )
         current["video_dir"] = str(video_path)
-
-    if req.anki_url is not None:
-        current["anki_url"] = req.anki_url
 
     save_settings(current)
     logger.info("Settings updated successfully")

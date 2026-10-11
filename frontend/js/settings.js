@@ -3,7 +3,6 @@ import { fetchSettings, saveSettings, fetchLogPath, selectFolder, getGoogleAuthS
 let settingsModal = null;
 let apiKeyInput = null;
 let videoDirInput = null;
-let ankiUrlInput = null;
 let logPathInput = null;
 let apiKeyToggleBtn = null;
 let selectFolderBtn = null;
@@ -28,7 +27,6 @@ export function initSettingsModal() {
 
   apiKeyInput = document.getElementById("settings-api-key");
   videoDirInput = document.getElementById("settings-video-dir");
-  ankiUrlInput = document.getElementById("settings-anki-url");
   logPathInput = document.getElementById("settings-log-path");
   apiKeyToggleBtn = document.getElementById("settings-key-toggle-btn");
   selectFolderBtn = document.getElementById("settings-select-folder-btn");
@@ -155,9 +153,6 @@ export async function openSettingsModal() {
     if (videoDirInput) {
       videoDirInput.value = settings.video_dir || "";
     }
-    if (ankiUrlInput) {
-      ankiUrlInput.value = settings.anki_url || "http://localhost:8765";
-    }
     if (logPathInput) {
       logPathInput.value = logInfo.log_path || "";
     }
@@ -233,11 +228,7 @@ async function handleSaveSettings() {
   try {
     const newApiKey = apiKeyInput ? apiKeyInput.value.trim() : "";
     const newVideoDir = videoDirInput ? videoDirInput.value.trim() : "";
-    const newAnkiUrl = ankiUrlInput ? ankiUrlInput.value.trim() : "";
-
-    const payload = {
-      anki_url: newAnkiUrl || "http://localhost:8765"
-    };
+    const payload = {};
 
     // Only update API key if user changed it from masked value
     if (newApiKey && !newApiKey.includes("***")) {

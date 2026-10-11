@@ -115,18 +115,10 @@ def test_dict_add_to_anki_reports_gateway_down(client, monkeypatch):
     assert "Anki Manager" in body["error"]
 
 
-def test_anki_add_vocab_forwards_all_fields(client, monkeypatch):
-    session = RecordingSession(FakeResponse(200, {"success": True, "note_id": 7}))
-    monkeypatch.setattr(anki_bridge, "_SESSION", session)
-
-    res = client.post("/api/anki/add-vocab", json=VOCAB_PAYLOAD)
-
-    assert res.status_code == 200
-    _, sent = session.calls[0]
-    assert sent["pos"] == "idiom"
-    assert sent["example"] == "She sprang the news on me."
-    assert sent["explanation"] == "① ... ② ..."
-    assert not sent.get("synonyms")
+def test_no_direct_ankiconnect_code_left():
+    # 카드는 Anki Manager 게이트웨이로만 만든다
+    import importlib.util
+    assert importlib.util.find_spec("backend.anki_core.connector") is None
 
 
 # --- 사전 조회 프롬프트 ---
