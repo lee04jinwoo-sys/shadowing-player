@@ -23,13 +23,16 @@ class _BlockedSession:
     def get(self, *args, **kwargs):
         raise AssertionError(f"Unmocked Anki Manager GET: {args}")
 
+    def close(self):
+        pass
+
 
 @pytest.fixture(autouse=True)
 def block_anki_network(monkeypatch, tmp_path):
     import requests
     from backend import anki_bridge
 
-    monkeypatch.setattr(anki_bridge, "_SESSION", _BlockedSession())
+    monkeypatch.setattr(anki_bridge, "_new_session", _BlockedSession)
 
     # 직접 AnkiConnect(8765)로 나가는 요청도 막는다
     def _blocked_post(self, url, *args, **kwargs):

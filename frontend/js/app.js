@@ -144,13 +144,21 @@ async function fetchEpisodes(forceRefresh = false) {
   }
 }
 
+const ANKI_STATUS_TEXT = {
+  ok: ["Anki 연결됨", "오라클 서버의 Anki Manager에 연결되어 있습니다"],
+  gateway_unreachable: ["터널 끊김", "오라클 서버로 가는 SSH 터널(localhost:8011)에 연결할 수 없습니다. infra/anki_tunnel을 확인하세요"],
+  anki_down: ["서버 Anki 꺼짐", "Anki Manager는 응답하지만 서버의 Anki(AnkiConnect)가 응답하지 않습니다"],
+  player_down: ["Anki 확인 실패", "Shadowing Player 서버에 연결할 수 없습니다"],
+};
+
 async function checkAnkiStatus(showFeedback = false) {
   if (showFeedback && ankiStatusLabel) ankiStatusLabel.textContent = "확인 중...";
-  state.ankiConnected = await api.checkAnkiConnection();
+  const status = await api.checkAnkiConnection();
+  state.ankiConnected = !!status.connected;
+  const [label, title] = ANKI_STATUS_TEXT[status.reason] || ANKI_STATUS_TEXT.gateway_unreachable;
   if (ankiStatusDot) ankiStatusDot.classList.toggle("connected", state.ankiConnected);
-  if (ankiStatusLabel) {
-    ankiStatusLabel.textContent = state.ankiConnected ? "Anki 연결됨" : "Anki 연결";
-  }
+  if (ankiStatusLabel) ankiStatusLabel.textContent = label;
+  if (ankiStatusBtn) ankiStatusBtn.title = title;
 }
 
 // --- Load Episode (Local) ---
@@ -841,22 +849,11 @@ function bindEvents() {
     subtitleSearchBtn.disabled = false;
   });
   
-  // Launch / Connect Anki
+  // Re-check the server Anki connection on demand (the Mac's own Anki is not used)
   if (ankiStatusBtn) {
     ankiStatusBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
-      if (!state.ankiConnected) {
-        if (ankiStatusLabel) ankiStatusLabel.textContent = "실행 중...";
-        await api.launchAnki();
-        // Poll connection status
-        for (let i = 0; i < 6; i++) {
-          await new Promise(r => setTimeout(r, 1000));
-          await checkAnkiStatus();
-          if (state.ankiConnected) break;
-        }
-      } else {
-        await checkAnkiStatus(true);
-      }
+      await checkAnkiStatus(true);
     });
   }
 

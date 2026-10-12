@@ -46,6 +46,9 @@ class RecordingSession:
     def get(self, url, timeout=None):
         raise AssertionError("unexpected GET")
 
+    def close(self):
+        pass
+
 
 @pytest.fixture
 def client():
@@ -69,7 +72,7 @@ VOCAB_PAYLOAD = {
 
 def test_dict_add_to_anki_goes_through_gateway_without_synonyms(client, monkeypatch):
     session = RecordingSession(FakeResponse(200, {"success": True, "note_id": 123, "duplicate": False}))
-    monkeypatch.setattr(anki_bridge, "_SESSION", session)
+    monkeypatch.setattr(anki_bridge, "_new_session", lambda: session)
 
     res = client.post("/api/dict/add-to-anki", json=VOCAB_PAYLOAD)
 
@@ -92,7 +95,7 @@ def test_dict_add_to_anki_reports_duplicate(client, monkeypatch):
     session = RecordingSession(FakeResponse(200, {
         "success": True, "duplicate": True, "error": "이미 Anki에 등록된 단어/표현입니다 (중복 방지)",
     }))
-    monkeypatch.setattr(anki_bridge, "_SESSION", session)
+    monkeypatch.setattr(anki_bridge, "_new_session", lambda: session)
 
     body = client.post("/api/dict/add-to-anki", json=VOCAB_PAYLOAD).json()
 
@@ -107,7 +110,7 @@ def test_dict_add_to_anki_reports_gateway_down(client, monkeypatch):
         def post(self, url, json=None, timeout=None):
             raise requests.exceptions.ConnectionError("refused")
 
-    monkeypatch.setattr(anki_bridge, "_SESSION", DownSession(None))
+    monkeypatch.setattr(anki_bridge, "_new_session", lambda: DownSession(None))
 
     body = client.post("/api/dict/add-to-anki", json=VOCAB_PAYLOAD).json()
 

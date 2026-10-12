@@ -38,21 +38,14 @@ export async function fetchSubtitlesOnline(epKey) {
   return await res.json();
 }
 
+// {connected, reason}: reason is "ok", "gateway_unreachable" (SSH tunnel to the
+// Oracle server is down) or "anki_down" (server Anki is not answering).
 export async function checkAnkiConnection() {
   try {
     const res = await fetch("/api/anki/status");
-    const data = await res.json();
-    return data.connected;
+    return await res.json();
   } catch {
-    return false;
-  }
-}
-
-export async function launchAnki() {
-  try {
-    await fetch("/api/anki/launch", { method: "POST" });
-  } catch (err) {
-    console.error("Failed to launch Anki:", err);
+    return { connected: false, reason: "player_down" };
   }
 }
 

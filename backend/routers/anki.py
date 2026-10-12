@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from backend.anki_bridge import check_anki_connection, add_sentence_to_anki
+from backend.anki_bridge import gateway_status, add_sentence_to_anki
 
 router = APIRouter(prefix="/api/anki")
 
@@ -11,8 +11,7 @@ class SentenceModel(BaseModel):
 
 @router.api_route("/status", methods=["GET", "HEAD"])
 def get_anki_status():
-    connected = check_anki_connection()
-    return {"connected": connected}
+    return gateway_status()
 
 @router.post("/add-sentence")
 def add_sentence(data: SentenceModel):
@@ -22,14 +21,3 @@ def add_sentence(data: SentenceModel):
     if "duplicate" in str(res.get("error", "")).lower():
         return {"success": True, "duplicate": True}
     raise HTTPException(status_code=400, detail=res.get("error", "Failed to add card"))
-
-import subprocess
-
-@router.post("/launch")
-def launch_anki():
-    try:
-        # For Mac OS
-        subprocess.run(["open", "-a", "Anki"], check=True)
-        return {"success": True}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))

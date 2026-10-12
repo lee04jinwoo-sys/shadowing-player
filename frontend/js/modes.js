@@ -813,7 +813,7 @@ async function bulkExportToAnki() {
   if (!state.ankiConnected) {
     bulkExportProgress.style.display = "block";
     bulkExportStatus.style.color = "var(--danger)";
-    bulkExportStatus.textContent = "Anki가 켜져 있지 않습니다.";
+    bulkExportStatus.textContent = "서버 Anki에 연결되어 있지 않습니다 (상단 상태 확인).";
     setTimeout(() => {
       bulkExportProgress.style.display = "none";
     }, 3000);
@@ -898,7 +898,7 @@ async function bulkExportVocabToAnki() {
   if (!state.ankiConnected) {
     bulkExportProgress.style.display = "block";
     bulkExportStatus.style.color = "var(--danger)";
-    bulkExportStatus.textContent = "Anki가 켜져 있지 않습니다.";
+    bulkExportStatus.textContent = "서버 Anki에 연결되어 있지 않습니다 (상단 상태 확인).";
     setTimeout(() => {
       bulkExportProgress.style.display = "none";
     }, 3000);
