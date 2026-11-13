@@ -24,9 +24,27 @@ describe('App UI shell & interactions', () => {
         return new Response(
           JSON.stringify([
             { start_ms: 1000, end_ms: 3500, text_en: 'Welcome to the show.', text_kr: '쇼에 오신 것을 환영합니다.' },
+            { start_ms: 4000, end_ms: 6500, text_en: 'Let us begin right now.', text_kr: '지금 바로 시작합시다.' },
           ]),
           { status: 200 },
         );
+      }
+      if (url.startsWith('/api/youtube/info')) {
+        return new Response(
+          JSON.stringify({ success: true, video_id: 'yt123456789', title: 'Sample YouTube Talk' }),
+          { status: 200 },
+        );
+      }
+      if (url.startsWith('/api/youtube/subtitles/yt123456789')) {
+        return new Response(
+          JSON.stringify([
+            { start_ms: 500, end_ms: 2500, text_en: 'YouTube line only.', text_kr: '유튜브 자막입니다.' },
+          ]),
+          { status: 200 },
+        );
+      }
+      if (url.startsWith('/api/anki/add-sentence')) {
+        return new Response(JSON.stringify({ success: true, note_id: 9001 }), { status: 200 });
       }
       return new Response(JSON.stringify({}), { status: 200 });
     });
@@ -77,5 +95,44 @@ describe('App UI shell & interactions', () => {
 
     fireEvent.keyDown(document, { code: 'KeyF', key: 'f' });
     expect(screen.getByTestId('workspace-main')).toHaveAttribute('data-theater', 'true');
+  });
+
+  it('auto-loads first local episode and clears youtube subtitles when switching from YouTube to local source', async () => {
+    localStorage.setItem(
+      'shadowing_last_watched',
+      JSON.stringify({ epKey: 'yt123456789', timeMs: 500, sourceMode: 'youtube' }),
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('유튜브 자막입니다.')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /^로컬$/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText('쇼에 오신 것을 환영합니다.')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('유튜브 자막입니다.')).not.toBeInTheDocument();
+  });
+
+  it('persists all batch-extracted sentence indices without race condition loss', async () => {
+    localStorage.setItem('shadowing_starred', JSON.stringify({ s01e01: [0, 1] }));
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('쇼에 오신 것을 환영합니다.')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /추출/ }));
+    const bulkBtn = await screen.findByRole('button', { name: /문장 전체 Anki 전송/ });
+    fireEvent.click(bulkBtn);
+
+    await waitFor(() => {
+      const saved = JSON.parse(localStorage.getItem('shadowing_extracted') || '{}') as Record<string, number[]>;
+      expect(saved.s01e01?.slice().sort()).toEqual([0, 1]);
+    });
   });
 });

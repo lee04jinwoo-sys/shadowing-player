@@ -23,3 +23,19 @@
 - **Node v25 `localStorage` 스텁 충돌**: Vitest jsdom 환경에서 Node 25 기본 `--localstorage-file` 미지정 시 `localStorage.clear`가 함수가 아닌 오류가 발생해 `src/test/setup.ts`에 `Storage` 메모리 폴리필 조건부 주입으로 해결.
 - **접근성 이름 중복**: `MediaContextBar.tsx`의 아이콘 전용 새로고침 버튼이 `title="로컬 폴더 다시 스캔"`으로 fallback되어 헤더의 `로컬` 탭과 버튼 쿼리가 충돌 -> `aria-label="에피소드 목록 새로고침"` 명시로 해소.
 - **HTML5 / YouTube IFrame 수명주기**: `YT.Player`가 대상 DOM 노드를 iframe으로 치환하므로 `ytHostRef` 내부에 동적 `#yt-iframe-target`을 생성·파기하도록 분리해 React DOM reconciliation 충돌 방지.
+
+## 5. 구조 리팩토링, 버그 수정 및 마감 (2차 패스)
+- **커스텀 훅 분리 (`App.tsx` 1,279줄 -> 676줄)**:
+  - `hooks/useToast.ts` (16줄): 토스트 알림 상태 및 자동 소멸 타이머 관리.
+  - `hooks/useEpisodeCollections.ts` (176줄): 에피소드별 받아쓰기·추출 문장·단어·완료 상태 및 최근 YouTube 기록 통합 관리. state updater 내부 `saveStoredState()` side-effect 및 일괄 추출 중 stale closure를 제거하고 `dirtyRef` + `useEffect` 저장으로 일원화.
+  - `hooks/useMediaPlayer.ts` (435줄): HTML5 `<video>` 및 YouTube IFrame 재생·구간 반복(A-B)·재생속도·스크러빙·로컬/유튜브 소스 전환 초기화(`clearHtml5Video`) 통합 제어.
+  - `hooks/useKeyboardShortcuts.ts` (192줄): 전역 단축키(`Space`, `←/→`, `R`, `V`, `A`, `F`, `?` 등) 및 입력 포커스 가드 처리.
+- **레이아웃 계층 및 시각 정제**:
+  - `MediaContextBar`를 헤더 아래 전폭 2단 스트립에서 좌측 스테이지 컬럼 내 `VideoStage` 상단 `.card-surface` 카드로 이동해 상단 경계선 누적을 줄이고 `Sidebar`가 헤더 아래 전체 높이를 점유하도록 정리.
+  - `index.css`에 `:root[data-theme="light"] .card-surface` 그림자와 `@keyframes skeleton-shimmer` / `.skeleton` 유틸리티 추가, `ExploreView`/`ListeningPanel` 로딩 스켈레톤 적용.
+  - `Header` 활성 에피소드 배지 표시 기준을 `xl:`에서 `lg:`로 확장(`max-w-[260px]`), `DictationPanel` `'다시 시도'` 재입력 버튼, `VideoStage` 타임라인 슬라이더 키보드(`ArrowLeft`/`ArrowRight`/`Home`/`End`) 지원, `ListeningPanel` 자막 행 키보드(`Enter`/`Space`) 탐색, `DictPopover` 스크롤 자동 닫힘 적용.
+- **버그 및 접근성 수정**:
+  - `utils/subtitles.ts`: `decodeHtmlEntities()` 추가로 자막 토큰화 전 Named/Numeric HTML 엔티티(`&amp;`, `&#39;` 등) 디코딩.
+  - `App.tsx`: `YouTube` -> `로컬` 전환 시 stale YouTube 자막/미디어를 정리하고 첫 로컬 에피소드 자동 로드.
+  - `ExploreView.tsx`: Google 미연동 상태에서도 `DEFAULT_ENGLISH_CHANNELS` 추천 채널 칩을 노출하고 `"Google 계정 연동하기"` 버튼을 병기. 채널 썸네일 없을 때 폴백 이니셜 `<span>`에 `aria-hidden="true"`를 부여해 버튼 접근성 이름 오염(`"T TED-Ed"`) 제거.
+- **검증 현황**: Vitest `7`파일 `18`개 테스트 통과, `tsc -b && vite build` 통과, `pytest -q` `35`개 테스트 통과, 로컬 서버(`127.0.0.1:8080`) 실브라우저 점검 완료.

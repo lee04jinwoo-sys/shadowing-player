@@ -85,7 +85,7 @@ export const Header: React.FC<HeaderProps> = ({
             {activeTitle && (
               <span
                 title={activeTitle}
-                className="hidden xl:inline-flex items-center max-w-[220px] truncate rounded-full bg-surface-2 border border-line px-2.5 py-0.5 text-[11px] font-medium text-ink-2"
+                className="hidden lg:inline-flex items-center max-w-[260px] truncate rounded-full bg-surface-2 border border-line px-2.5 py-0.5 text-[11px] font-medium text-ink-2"
               >
                 {activeTitle}
               </span>

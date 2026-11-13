@@ -205,3 +205,29 @@ input[type="range"].studio-slider::-webkit-slider-thumb:hover {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Light-mode elevated card parity with portfolio/my-budget-app */
+:root[data-theme="light"] .card-surface {
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+/* Loading skeleton shimmer */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -320px 0;
+  }
+  100% {
+    background-position: 320px 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 0%,
+    var(--line) 50%,
+    var(--surface-2) 100%
+  );
+  background-size: 640px 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}

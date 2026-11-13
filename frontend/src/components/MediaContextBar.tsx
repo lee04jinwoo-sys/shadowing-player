@@ -47,7 +47,7 @@ export const MediaContextBar: React.FC<MediaContextBarProps> = ({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2 px-4 sm:px-5 py-2.5 border-b border-line bg-surface/60">
+    <div className="card-surface flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-surface px-3.5 py-2">
       {sourceMode === 'local' ? (
         <>
           <select

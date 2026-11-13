@@ -332,7 +332,7 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
               return (
                 <div
                   key={idx}
-                  className="rounded-xl bg-surface-2/60 border border-line p-3 space-y-2"
+                  className="card-surface rounded-xl bg-surface-2/60 border border-line p-3 space-y-2"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="num font-mono text-[11px] text-ink-3">{timeStr}</span>
@@ -388,7 +388,7 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
             return (
               <div
                 key={v.id}
-                className="rounded-xl bg-surface-2/60 border border-accent/25 p-3 space-y-2"
+                className="card-surface rounded-xl bg-surface-2/60 border border-accent/25 p-3 space-y-2"
               >
                 <div className="flex items-center justify-between gap-2">
                   <input

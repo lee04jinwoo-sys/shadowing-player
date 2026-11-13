@@ -49,4 +49,10 @@ describe('subtitles utilities', () => {
     expect(wordTokens.find((t) => t.word === 'problem')?.status).toBe('starred');
     expect(wordTokens.find((t) => t.word === 'need')?.status).toBe('plain');
   });
+
+  it('decodes HTML entities (&amp;, &#39;, &quot;) before tokenizing words', () => {
+    const tokens = tokenizeEnglishSubtitle('<i>It&#39;s</i> Tom &amp; &quot;Jerry&quot;.', []);
+    const words = tokens.filter((t) => t.isWord).map((t) => t.word);
+    expect(words).toEqual(["It's", 'Tom', 'Jerry']);
+  });
 });

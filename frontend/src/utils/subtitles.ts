@@ -37,6 +37,31 @@ export function findActiveSubtitleIndex(subtitles: SubtitleItem[], timeMs: numbe
   return -1;
 }
 
+const NAMED_HTML_ENTITIES: Record<string, string> = {
+  amp: '&',
+  apos: "'",
+  quot: '"',
+  lt: '<',
+  gt: '>',
+  nbsp: ' ',
+};
+
+export function decodeHtmlEntities(input: string): string {
+  return input
+    .replace(/&#(\d+);/g, (_, dec: string) => {
+      const code = Number.parseInt(dec, 10);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : _;
+    })
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex: string) => {
+      const code = Number.parseInt(hex, 16);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : _;
+    })
+    .replace(/&([a-zA-Z]+);/g, (full, name: string) => {
+      const mapped = NAMED_HTML_ENTITIES[name.toLowerCase()];
+      return mapped ?? full;
+    });
+}
+
 export function tokenizeEnglishSubtitle(text: string, savedVocab: SavedVocabItem[]): WordTokenSegment[] {
   if (!text) return [];
 
@@ -58,7 +83,9 @@ export function tokenizeEnglishSubtitle(text: string, savedVocab: SavedVocabItem
     }
   }
 
-  const cleanText = text.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
+  const cleanText = decodeHtmlEntities(text.replace(/<[^>]+>/g, ''))
+    .replace(/\u00a0/g, ' ')
+    .trim();
   const lowerText = cleanText.toLowerCase();
   const matchedExtractedPhrases = extractedPhrases.filter((p) => lowerText.includes(p));
   const matchedStarredPhrases = starredPhrases.filter((p) => lowerText.includes(p));

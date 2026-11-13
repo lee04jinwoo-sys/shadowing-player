@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Compass,
   Link2,
-  Loader2,
   Play,
   RefreshCw,
   Search,
@@ -158,16 +157,18 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
     <div className="flex-1 min-h-0 overflow-y-auto bg-canvas">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-5">
         {/* Search Header */}
-        <section className="rounded-2xl bg-surface border border-line p-4 sm:p-5 space-y-4">
+        <section className="card-surface rounded-2xl bg-surface border border-line p-4 sm:p-5 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <div className="flex items-center gap-2 text-sm font-semibold text-ink">
-                <Compass className="w-4 h-4 text-accent" />
-                <span>YouTube 쉐도잉 탐색</span>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center border bg-accent/12 border-accent/25 text-accent shrink-0">
+                <Compass className="w-4 h-4" />
               </div>
-              <p className="text-xs text-ink-3 mt-0.5">
-                영어 자막이 포함된 영상을 검색하거나 URL을 붙여넣어 바로 학습을 시작하세요.
-              </p>
+              <div>
+                <h2 className="text-sm font-semibold text-ink">YouTube 쉐도잉 탐색</h2>
+                <p className="text-xs text-ink-3 mt-0.5">
+                  영어 자막이 포함된 영상을 검색하거나 URL을 붙여넣어 바로 학습을 시작하세요.
+                </p>
+              </div>
             </div>
             <span className="num text-[11px] font-mono text-ink-3">
               {loadingVideos ? '불러오는 중...' : `${videos.length}개 영상`}
@@ -221,45 +222,48 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
         </section>
 
         {/* Subscriptions Strip */}
-        <section className="rounded-2xl bg-surface border border-line px-4 py-3">
-          <div className="flex items-center justify-between gap-2 mb-2.5">
+        <section className="card-surface rounded-2xl bg-surface border border-line px-4 py-3 space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-ink-2">
               <Tv className="w-3.5 h-3.5 text-accent" />
-              <span>내 YouTube 구독 채널</span>
-              {subsAuthenticated && (
+              <span>{subsAuthenticated ? '내 YouTube 구독 채널' : '추천 영어 채널'}</span>
+              {subsAuthenticated ? (
                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-good/12 text-good text-[10px] font-medium">
                   <UserCheck className="w-3 h-3" />
                   연동됨 ({channels.length})
                 </span>
+              ) : (
+                <span className="px-1.5 py-0.5 rounded-md bg-surface-2 border border-line text-ink-3 text-[10px] font-medium">
+                  기본 추천 ({channels.length})
+                </span>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => void loadSubscriptions()}
-              disabled={loadingSubs}
-              className="inline-flex items-center gap-1 text-[11px] text-ink-3 hover:text-ink transition-colors cursor-pointer"
-            >
-              <RefreshCw className={`w-3 h-3 ${loadingSubs ? 'animate-spin' : ''}`} />
-              <span>새로고침</span>
-            </button>
-          </div>
 
-          {!subsAuthenticated ? (
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-canvas border border-line px-3.5 py-2.5">
-              <span className="text-xs text-ink-2">
-                Google 계정을 연동하면 구독 중인 영어 채널 목록과 최신 영상을 바로 탐색할 수 있습니다.
-              </span>
+            <div className="flex items-center gap-2">
+              {!subsAuthenticated && (
+                <button
+                  type="button"
+                  onClick={onOpenSettings}
+                  className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg bg-surface-2 hover:bg-line text-ink text-[11px] font-medium border border-line transition-colors cursor-pointer"
+                >
+                  <Link2 className="w-3 h-3 text-accent" />
+                  <span>Google 계정 연동하기</span>
+                </button>
+              )}
               <button
                 type="button"
-                onClick={onOpenSettings}
-                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-surface-2 hover:bg-line text-ink text-xs font-medium border border-line transition-colors cursor-pointer"
+                onClick={() => void loadSubscriptions()}
+                disabled={loadingSubs}
+                className="inline-flex items-center gap-1 text-[11px] text-ink-3 hover:text-ink transition-colors cursor-pointer"
               >
-                <Link2 className="w-3.5 h-3.5 text-accent" />
-                <span>Google 계정 연동하기</span>
+                <RefreshCw className={`w-3 h-3 ${loadingSubs ? 'animate-spin' : ''}`} />
+                <span>새로고침</span>
               </button>
             </div>
-          ) : channels.length === 0 ? (
-            <p className="text-xs text-ink-3 py-1">표시할 구독 채널이 없습니다.</p>
+          </div>
+
+          {channels.length === 0 ? (
+            <p className="text-xs text-ink-3 py-1">표시할 채널이 없습니다.</p>
           ) : (
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
               {channels.map((ch) => {
@@ -282,7 +286,10 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                         className="w-5 h-5 rounded-full object-cover bg-surface-2"
                       />
                     ) : (
-                      <span className="w-5 h-5 rounded-full bg-surface-2 inline-flex items-center justify-center text-[10px] text-ink-3">
+                      <span
+                        aria-hidden="true"
+                        className="w-5 h-5 rounded-full bg-surface-2 inline-flex items-center justify-center text-[10px] text-ink-3"
+                      >
                         {ch.title.slice(0, 1).toUpperCase()}
                       </span>
                     )}
@@ -303,13 +310,30 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
           </div>
 
           {loadingVideos ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-3 text-ink-3">
-              <Loader2 className="w-6 h-6 animate-spin text-accent" />
-              <span className="text-xs">영상을 검색하고 있습니다...</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-6">
+              {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl bg-surface border border-line overflow-hidden"
+                >
+                  <div className="skeleton aspect-video w-full" />
+                  <div className="p-3.5 space-y-2">
+                    <div className="skeleton h-4 w-5/6 rounded" />
+                    <div className="skeleton h-3 w-1/2 rounded" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : videoError ? (
-            <div className="rounded-2xl bg-danger/10 border border-danger/25 px-4 py-6 text-center text-xs text-danger">
-              {videoError}
+            <div className="rounded-2xl bg-danger/10 border border-danger/25 px-4 py-6 text-center space-y-3">
+              <p className="text-xs text-danger">{videoError}</p>
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-surface border border-line text-xs font-medium text-ink hover:bg-surface-2 transition-colors cursor-pointer"
+              >
+                <span>설정 열기 (API 키 확인)</span>
+              </button>
             </div>
           ) : videos.length === 0 ? (
             <div className="rounded-2xl bg-surface border border-line px-4 py-16 text-center text-xs text-ink-3">
@@ -324,7 +348,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                   onClick={() =>
                     onSelectVideo(`https://www.youtube.com/watch?v=${card.video_id}`)
                   }
-                  className="group flex flex-col text-left rounded-2xl bg-surface border border-line hover:border-accent/50 overflow-hidden transition-all hover:-translate-y-0.5 cursor-pointer"
+                  className="card-surface group flex flex-col text-left rounded-2xl bg-surface border border-line hover:border-accent/50 overflow-hidden transition-all hover:-translate-y-0.5 cursor-pointer"
                 >
                   <div className="relative aspect-video w-full bg-surface-2 overflow-hidden">
                     <img

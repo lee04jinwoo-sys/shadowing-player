@@ -91,6 +91,28 @@ export const VideoStage: React.FC<VideoStageProps> = ({
     onSeekToSubtitle(idx);
   };
 
+  const handleSliderKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (totalSubtitles <= 0) return;
+    const baseIdx = activeSubIndex >= 0 ? activeSubIndex : Math.max(0, progressIndex - 1);
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      e.stopPropagation();
+      onSeekToSubtitle(Math.min(totalSubtitles - 1, baseIdx + 1));
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      e.stopPropagation();
+      onSeekToSubtitle(Math.max(0, baseIdx - 1));
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      e.stopPropagation();
+      onSeekToSubtitle(0);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      e.stopPropagation();
+      onSeekToSubtitle(totalSubtitles - 1);
+    }
+  };
+
   useEffect(() => {
     if (!draggingProgress) return;
     const handleMove = (e: MouseEvent | TouchEvent) => {
@@ -120,7 +142,7 @@ export const VideoStage: React.FC<VideoStageProps> = ({
   return (
     <div
       className={`relative flex-1 min-h-0 flex flex-col ${
-        theaterMode ? 'p-0 gap-0' : 'p-3 sm:p-4 lg:p-5 gap-3 sm:gap-4'
+        theaterMode ? 'p-0 gap-0' : 'gap-3'
       }`}
     >
       {/* Video Viewport */}
@@ -215,7 +237,7 @@ export const VideoStage: React.FC<VideoStageProps> = ({
                   ? 'translate-y-0 opacity-100 pointer-events-auto'
                   : 'translate-y-full opacity-0 pointer-events-none'
               }`
-            : 'rounded-2xl bg-surface border border-line px-4 py-2.5 shadow-sm'
+            : 'card-surface rounded-2xl bg-surface border border-line px-4 py-2.5'
         }
       >
         {/* Row 1: Scrubber & Numeric Readout */}
@@ -232,6 +254,7 @@ export const VideoStage: React.FC<VideoStageProps> = ({
             aria-valuemax={100}
             aria-valuenow={percentage}
             tabIndex={0}
+            onKeyDown={handleSliderKeyDown}
             onMouseDown={(e) => {
               setDraggingProgress(true);
               seekFromClientX(e.clientX);

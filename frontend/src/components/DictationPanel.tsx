@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Loader2, Mic, RotateCcw, Sparkles, Star } from 'lucide-react';
+import { Loader2, Mic, Pencil, RotateCcw, Sparkles, Star } from 'lucide-react';
 import type { DiffWordItem, SubtitleItem } from '../types';
 import { compareStrings } from '../utils/dictation';
 import { getSTTListeningState, isSTTSupported, startSTT, stopSTT } from '../utils/stt';
@@ -164,9 +164,17 @@ export const DictationPanel: React.FC<DictationPanelProps> = ({
 
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
-      <div className="rounded-2xl bg-surface-2/60 border border-line p-4 space-y-3">
+      <div className="card-surface rounded-2xl bg-surface-2/60 border border-line p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-ink">대사 말하기 &amp; 맞추기</h3>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center border bg-accent/12 border-accent/25 text-accent shrink-0">
+              <Mic className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-ink">대사 말하기 &amp; 맞추기</h3>
+              <p className="text-[11px] text-ink-3">음성 또는 타이핑 받아쓰기 채점</p>
+            </div>
+          </div>
           {activeSubIndex >= 0 && (
             <span className="num font-mono text-[11px] text-ink-3">#{activeSubIndex + 1}</span>
           )}
@@ -223,7 +231,7 @@ export const DictationPanel: React.FC<DictationPanelProps> = ({
       </div>
 
       {dictationChecked && activeSubtitle && (
-        <div className="rounded-2xl bg-surface-2/60 border border-line p-4 space-y-3.5">
+        <div className="card-surface rounded-2xl bg-surface-2/60 border border-line p-4 space-y-3.5">
           {score !== null && (
             <div
               className={`flex items-center justify-center gap-2.5 py-2.5 px-3 rounded-xl border ${scoreTone}`}
@@ -241,6 +249,18 @@ export const DictationPanel: React.FC<DictationPanelProps> = ({
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>다시 듣기</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                onCheckedChange(false);
+                window.setTimeout(() => inputRef.current?.focus(), 40);
+              }}
+              className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg bg-surface hover:bg-surface-2 border border-line text-[11px] font-medium text-ink-2 hover:text-ink cursor-pointer"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              <span>다시 시도</span>
             </button>
 
             <button

@@ -87,7 +87,11 @@ export const ListeningPanel: React.FC<ListeningPanelProps> = ({
           <button
             type="button"
             onClick={onToggleBlur}
-            title="전체 자막 블러 토글 (V)"
+            title={
+              blurRevealed
+                ? '전체 자막 블러 토글 (단축키: V) — 현재 보임 상태'
+                : '전체 자막 블러 토글 (단축키: V) — 현재 가림 상태 (마우스 올리면 표시)'
+            }
             className={`inline-flex items-center gap-1 h-7 px-2.5 rounded-lg border text-[11px] font-medium transition-colors cursor-pointer ${
               blurRevealed
                 ? 'bg-accent/15 border-accent/40 text-accent'
@@ -108,7 +112,19 @@ export const ListeningPanel: React.FC<ListeningPanelProps> = ({
         }`}
       >
         {loadingMessage && (
-          <div className="py-12 px-4 text-center text-xs text-ink-2">{loadingMessage}</div>
+          <div className="space-y-2.5 py-2">
+            <div className="text-center text-xs text-ink-3 py-1">{loadingMessage}</div>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="rounded-xl border border-line bg-surface-2/40 p-3 space-y-2"
+              >
+                <div className="skeleton h-3 w-12 rounded" />
+                <div className="skeleton h-4 w-5/6 rounded" />
+                <div className="skeleton h-3 w-3/5 rounded" />
+              </div>
+            ))}
+          </div>
         )}
 
         {!loadingMessage && errorMessage && (
@@ -163,6 +179,14 @@ export const ListeningPanel: React.FC<ListeningPanelProps> = ({
                 key={`${sub.start_ms}-${idx}`}
                 ref={(el) => {
                   rowRefs.current[idx] = el;
+                }}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if ((e.target as HTMLElement).closest('.word-token')) return;
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onSeekToSubtitle(idx);
+                  }
                 }}
                 onClick={(e) => {
                   const sel = window.getSelection();

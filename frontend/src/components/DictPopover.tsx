@@ -64,6 +64,8 @@ export const DictPopover: React.FC<DictPopoverProps> = ({
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const requestSeqRef = useRef(0);
   const activePromiseRef = useRef<Promise<DictLookupResult> | null>(null);
+  const savedVocabRef = useRef<SavedVocabItem[]>(savedVocab);
+  savedVocabRef.current = savedVocab;
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -137,7 +139,9 @@ export const DictPopover: React.FC<DictPopoverProps> = ({
     setEditExplanation('');
     setEditExample(request.context || '');
 
-    const existing = savedVocab.find((v) => v.word.toLowerCase() === word.toLowerCase());
+    const existing = savedVocabRef.current.find(
+      (v) => v.word.toLowerCase() === word.toLowerCase(),
+    );
     setSavedMode(existing ? (existing.extracted ? 'anki' : 'local') : 'none');
 
     const promise = lookupWord(word, request.context);
@@ -155,7 +159,7 @@ export const DictPopover: React.FC<DictPopoverProps> = ({
         setEditExplanation(res.explanation || '');
         setEditExample(res.example || request.context || '');
 
-        const match = savedVocab.find(
+        const match = savedVocabRef.current.find(
           (v) => v.word.toLowerCase() === resolvedWord.toLowerCase(),
         );
         if (match) {
@@ -315,13 +319,21 @@ export const DictPopover: React.FC<DictPopoverProps> = ({
       }
     };
 
+    const handleScrollClose = (e: Event) => {
+      const target = e.target as Node | null;
+      if (target && popoverRef.current?.contains(target)) return;
+      handleClose();
+    };
+
     document.addEventListener('mousedown', handleDocMouseDown);
     document.addEventListener('keydown', handleKeyDown);
     window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', handleScrollClose, true);
     return () => {
       document.removeEventListener('mousedown', handleDocMouseDown);
       document.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', handleScrollClose, true);
     };
   }, [isActive, handleClose, handleSave, updatePosition]);
 
