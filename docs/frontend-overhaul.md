@@ -57,3 +57,10 @@
 - **TDD Red->Green & 검증 현황**:
   - 신규/확장 테스트(`MediaContextBar.test.tsx`, `VideoStage.test.tsx`, `DictationPanel.test.tsx`) 선작성 후 실패 확인(Red: `3 files failed / 3 tests failed`) 뒤 구현 완료.
   - 최종 검증: Vitest `8`파일 `20`개 테스트 통과, `tsc -b && vite build` 통과, `pytest -q` `35`개 테스트 통과.
+
+## 7. 인디고(남색) 포인트 컬러 복원 (4차 패스)
+- **사유 및 트레이드오프**: 3차 패스에서 적용한 Warm Amber(`#f5c26b` / `#b45309`)가 라이트 모드 등에서 주황 계열로 인식된다는 피드백에 따라, 기존 `758cc6d`의 인디고/남색 포인트 토큰을 복원하되 3차 패스의 `--accent-ink` 고대비 체계를 유지.
+- **토큰 조정 (`index.css`)**:
+  - **다크**: `--accent: #8b93ff`, `--accent-hover: #757ef5`, `--accent-ink: #0a0d14`(WCAG 대비 `7.14:1`, 기존 흰 글씨 `2.72:1` 대비 개선), `--warn: #fbbf24`.
+  - **라이트**: `--accent: #5b63e6`, `--accent-hover: #4b53d1`, `--accent-ink: #ffffff`(대비 `4.8:1`), `--warn: #d97706`.
+- **검증 현황**: `themeTokens.test.ts` Red->Green 포함 Vitest `9`파일 `21`개 테스트 통과, `tsc -b && vite build` 통과, `pytest -q` `35`개 테스트 통과.

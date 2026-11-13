@@ -13,11 +13,11 @@
   --ink-2: #a7b0c0;
   --ink-3: #6b7486;
 
-  --accent: #f5c26b;
-  --accent-hover: #f7cf86;
+  --accent: #8b93ff;
+  --accent-hover: #757ef5;
   --accent-ink: #0a0d14;
   --good: #34d399;
-  --warn: #f5c26b;
+  --warn: #fbbf24;
   --danger: #fb7185;
   --info: #38bdf8;
 }
@@ -35,8 +35,8 @@
   --ink-2: #475569;
   --ink-3: #64748b;
 
-  --accent: #b45309;
-  --accent-hover: #92400e;
+  --accent: #5b63e6;
+  --accent-hover: #4b53d1;
   --accent-ink: #ffffff;
   --good: #059669;
   --warn: #d97706;
