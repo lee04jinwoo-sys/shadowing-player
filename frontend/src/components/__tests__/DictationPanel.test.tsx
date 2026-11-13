@@ -28,6 +28,10 @@ describe('DictationPanel', () => {
       />,
     );
 
+    const primaryBtn = screen.getByRole('button', { name: /다음 대사/ });
+    expect(primaryBtn.className).toContain('text-accent-ink');
+    expect(primaryBtn.className).not.toContain('text-white');
+
     const retryBtn = screen.getByRole('button', { name: /다시 시도/ });
     expect(retryBtn).toBeInTheDocument();
     fireEvent.click(retryBtn);

@@ -45,30 +45,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
       />
 
       {/* Mode Selector */}
-      <div className="grid grid-cols-3 border-b border-line bg-canvas/50 p-1.5 gap-1 shrink-0">
-        {tabs.map((tab) => {
-          const active = activeMode === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => onChangeMode(tab.id)}
-              className={`inline-flex items-center justify-center gap-1.5 h-9 rounded-xl text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
-                active
-                  ? 'bg-surface text-ink border border-line-strong shadow-xs'
-                  : 'text-ink-3 hover:text-ink hover:bg-surface-2/60 border border-transparent'
-              }`}
-            >
-              <span className={active ? 'text-accent' : ''}>{tab.icon}</span>
-              <span>{tab.label}</span>
-              {tab.badge !== undefined && (
-                <span className="num px-1.5 py-0.5 rounded-full bg-accent/15 text-accent text-[10px] font-semibold leading-none">
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      <div className="border-b border-line px-3 py-2 shrink-0">
+        <div className="grid grid-cols-3 rounded-lg bg-surface-2 p-0.5 gap-0.5">
+          {tabs.map((tab) => {
+            const active = activeMode === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => onChangeMode(tab.id)}
+                className={`inline-flex items-center justify-center gap-1.5 h-8 rounded-md text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
+                  active
+                    ? 'bg-surface-3 text-ink shadow-[0_1px_0_var(--line-strong)_inset]'
+                    : 'text-ink-3 hover:text-ink'
+                }`}
+              >
+                <span className={active ? 'text-accent' : ''}>{tab.icon}</span>
+                <span>{tab.label}</span>
+                {tab.badge !== undefined && (
+                  <span className="num px-1.5 py-0.5 rounded-full bg-accent/15 text-accent text-[10px] font-semibold leading-none">
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {children}

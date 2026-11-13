@@ -2,19 +2,22 @@
 
 :root {
   color-scheme: dark;
-  --canvas: #0a0b0d;
-  --surface: #121418;
-  --surface-2: #181b20;
-  --line: #23272e;
-  --line-strong: #2f343c;
-  --ink: #eceef1;
-  --ink-2: #a6adb8;
-  --ink-3: #6b7280;
+  --canvas: #0a0d14;
+  --surface: #0f131c;
+  --surface-2: #161b26;
+  --surface-3: #1d2331;
+  --stage: #07090f;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.15);
+  --ink: #eef1f6;
+  --ink-2: #a7b0c0;
+  --ink-3: #6b7486;
 
-  --accent: #8b93ff;
-  --accent-hover: #757ef5;
+  --accent: #f5c26b;
+  --accent-hover: #f7cf86;
+  --accent-ink: #0a0d14;
   --good: #34d399;
-  --warn: #fbbf24;
+  --warn: #f5c26b;
   --danger: #fb7185;
   --info: #38bdf8;
 }
@@ -24,14 +27,17 @@
   --canvas: #f8fafc;
   --surface: #ffffff;
   --surface-2: #f1f5f9;
+  --surface-3: #e2e8f0;
+  --stage: #0c101a;
   --line: #e2e8f0;
   --line-strong: #cbd5e1;
   --ink: #0f172a;
   --ink-2: #475569;
   --ink-3: #64748b;
 
-  --accent: #5b63e6;
-  --accent-hover: #4b53d1;
+  --accent: #b45309;
+  --accent-hover: #92400e;
+  --accent-ink: #ffffff;
   --good: #059669;
   --warn: #d97706;
   --danger: #e11d48;
@@ -45,6 +51,8 @@
   --color-canvas: var(--canvas);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-stage: var(--stage);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
   --color-ink: var(--ink);
@@ -52,6 +60,7 @@
   --color-ink-3: var(--ink-3);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
   --color-good: var(--good);
   --color-warn: var(--warn);
   --color-danger: var(--danger);
@@ -130,14 +139,10 @@
 }
 
 .word-token.token-selected {
-  background-color: color-mix(in srgb, var(--accent) 32%, transparent);
-  color: #ffffff;
+  background-color: color-mix(in srgb, var(--accent) 26%, transparent);
+  color: var(--ink);
   border-bottom: 2px solid var(--accent);
   text-decoration: none;
-}
-
-:root[data-theme="light"] .word-token.token-selected {
-  color: var(--ink);
 }
 
 .word-token.word-saved {
@@ -206,7 +211,11 @@ input[type="range"].studio-slider::-webkit-slider-thumb:hover {
   display: none;
 }
 
-/* Light-mode elevated card parity with portfolio/my-budget-app */
+/* Editorial frame elevation & light-mode crisp depth */
+.card-surface {
+  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.04) inset;
+}
+
 :root[data-theme="light"] .card-surface {
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
 }

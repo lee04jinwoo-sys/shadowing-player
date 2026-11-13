@@ -329,7 +329,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     type="button"
                     onClick={() => void handleGoogleLogin()}
                     disabled={authActionBusy}
-                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-60"
+                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-accent hover:bg-accent-hover text-accent-ink text-xs font-semibold transition-colors cursor-pointer disabled:opacity-60"
                   >
                     <span>Google 계정으로 로그인</span>
                   </button>
@@ -401,7 +401,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-accent hover:bg-accent-hover text-accent-ink text-xs font-semibold transition-colors cursor-pointer disabled:opacity-60"
             >
               {saving ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />

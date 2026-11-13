@@ -39,3 +39,21 @@
   - `App.tsx`: `YouTube` -> `로컬` 전환 시 stale YouTube 자막/미디어를 정리하고 첫 로컬 에피소드 자동 로드.
   - `ExploreView.tsx`: Google 미연동 상태에서도 `DEFAULT_ENGLISH_CHANNELS` 추천 채널 칩을 노출하고 `"Google 계정 연동하기"` 버튼을 병기. 채널 썸네일 없을 때 폴백 이니셜 `<span>`에 `aria-hidden="true"`를 부여해 버튼 접근성 이름 오염(`"T TED-Ed"`) 제거.
 - **검증 현황**: Vitest `7`파일 `18`개 테스트 통과, `tsc -b && vite build` 통과, `pytest -q` `35`개 테스트 통과, 로컬 서버(`127.0.0.1:8080`) 실브라우저 점검 완료.
+
+## 6. Warm Cinema & Editorial 디자인 리뉴얼 (3차 패스)
+- **설계 기준 합의 (`/grill-me` 5단계)**:
+  - **색상/토큰 시스템 (`index.css`)**: 다크 기본 팔레트를 웜 시네마/에디토리얼 톤(캔버스 `#0a0d14`, 표면 `#0f131c`, 보조 표면 `#161b26`/`--surface-3` `#1d2331`, 시네마 스테이지 `#07090f`, 웜 골드 포인트 `#f5c26b` + 고대비 텍스트 `--accent-ink: #0a0d14`)으로 재정립하고, 라이트 모드(`#f8fafc` 캔버스, `#ffffff` 표면, `#f1f5f9` 보조 표면, `#0c101a` 스테이지)는 대비가 높은 `#b45309` 포인트 + `#ffffff` `--accent-ink`로 보정.
+  - **글로벌 대비 규칙**: `bg-accent` 채움 버튼에 남아있던 `text-white`를 전 컴포넌트(`Header`, `MediaContextBar`, `VideoStage`, `ListeningPanel`, `DictationPanel`, `ExtractionPanel`, `ExploreView`, `DictPopover`, `SettingsModal`)에서 `text-accent-ink`로 일괄 교체.
+- **프레임 통합 및 Box-in-Box 제거**:
+  - `Header.tsx`: 데스크톱 `md:h-12` 슬림 높이, `/ activeTitle` 표시, 보더 없는 `bg-surface-2` 소스 탭 및 고스트 유틸리티 버튼, 검사 중 스피너와 상태 도트가 겹치지 않는 단일 Anki 상태 인디케이터 적용.
+  - `App.tsx` + `MediaContextBar.tsx` + `VideoStage.tsx`: `!theaterMode`에서 미디어 컨텍스트 바·비디오 스테이지·NLE 트랜스포트 독을 단일 `rounded-2xl border border-line bg-surface overflow-hidden divide-y divide-line` 프레임으로 통합해 중첩 보더 제거.
+- **플레이어 워크스페이스 고도화 (`MediaContextBar.tsx`, `VideoStage.tsx`)**:
+  - OS 기본 `<select>`를 바깥 클릭 및 `Escape` 키로 닫히는 커스텀 `aria-haspopup="listbox"` / `role="listbox"` 드롭다운(로컬 에피소드 및 YouTube 최근 기록)으로 교체.
+  - 초기 검은 정지 프레임 공백을 줄이기 위해 미디어 로드 후 `currentTimeMs < 500 && !isPlaying`일 때 중앙 스탠바이 재생 트리거(`aria-label="영상 재생 시작"`) 제공.
+  - NLE 타임라인 스크러버에 샘플링된 자막 큐 틱 레일(`data-testid="cue-ticks-rail"`)과 호버 시점/자막 프리뷰(`data-testid="scrubber-hover-tip"`)를 추가하되, `dictationModeActive` 활성화 시 영어 자막 텍스트 유출을 차단.
+- **우측 사이드바 리듬 정제 (`Sidebar.tsx`, `ListeningPanel.tsx`, `DictationPanel.tsx`, `ExtractionPanel.tsx`)**:
+  - `ListeningPanel`: `[52px_1fr]` `divide-y` 에디토리얼 행, 좌측 활성/추출/별표 얇은 강조 바, 고스트 호버 액션 적용.
+  - `DictationPanel` / `ExtractionPanel`: 이중 카드 보더를 `divide-y divide-line` 및 `bg-canvas/55` 계층으로 평탄화해 시각적 과밀 해소.
+- **TDD Red->Green & 검증 현황**:
+  - 신규/확장 테스트(`MediaContextBar.test.tsx`, `VideoStage.test.tsx`, `DictationPanel.test.tsx`) 선작성 후 실패 확인(Red: `3 files failed / 3 tests failed`) 뒤 구현 완료.
+  - 최종 검증: Vitest `8`파일 `20`개 테스트 통과, `tsc -b && vite build` 통과, `pytest -q` `35`개 테스트 통과.

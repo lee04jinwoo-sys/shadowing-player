@@ -501,7 +501,7 @@ export const DictPopover: React.FC<DictPopoverProps> = ({
               ? 'bg-good/15 text-good border border-good/35 hover:bg-good/20'
               : savedMode === 'local'
                 ? 'bg-warn/15 text-warn border border-warn/35 hover:bg-warn/20'
-                : 'bg-accent text-white hover:bg-accent-hover'
+                : 'bg-accent text-accent-ink font-semibold hover:bg-accent-hover'
           } disabled:opacity-60`}
         >
           {saving ? (

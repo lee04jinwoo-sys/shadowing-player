@@ -189,7 +189,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
             <button
               type="submit"
               disabled={loadingVideos}
-              className="h-10 px-4 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-medium transition-colors cursor-pointer shrink-0 disabled:opacity-60"
+              className="h-10 px-4 rounded-xl bg-accent hover:bg-accent-hover text-accent-ink text-xs font-semibold transition-colors cursor-pointer shrink-0 disabled:opacity-60"
             >
               검색
             </button>
@@ -358,7 +358,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                     />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/35 transition-colors flex items-center justify-center">
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-white text-xs font-medium shadow-lg">
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-accent-ink text-xs font-semibold shadow-lg">
                         <Play className="w-3.5 h-3.5 fill-current" />
                         <span>학습 시작</span>
                       </span>

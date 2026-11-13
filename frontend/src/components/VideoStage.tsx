@@ -1,5 +1,6 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AlertTriangle,
   ChevronLeft,
   ChevronRight,
   Film,
@@ -8,7 +9,6 @@ import {
   Pause,
   Play,
   Repeat,
-  AlertTriangle,
 } from 'lucide-react';
 import type { DictPopoverRequest, SavedVocabItem, SubtitleItem } from '../types';
 import { formatTime } from '../utils/subtitles';
@@ -20,6 +20,10 @@ interface VideoStageProps {
   aviUnsupported: boolean;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   ytHostRef: React.RefObject<HTMLDivElement | null>;
+  subtitles?: SubtitleItem[];
+  starredSubtitles?: Set<number>;
+  extractedSubtitles?: Set<number>;
+  mediaTitle?: string;
   activeSubtitle: SubtitleItem | null;
   activeSubIndex: number;
   totalSubtitles: number;
@@ -47,12 +51,18 @@ interface VideoStageProps {
   controlsHoverRef: React.RefObject<HTMLDivElement | null>;
 }
 
+const MAX_CUE_TICKS = 96;
+
 export const VideoStage: React.FC<VideoStageProps> = ({
   adapter,
   hasMedia,
   aviUnsupported,
   videoRef,
   ytHostRef,
+  subtitles = [],
+  starredSubtitles = new Set<number>(),
+  extractedSubtitles = new Set<number>(),
+  mediaTitle,
   activeSubtitle,
   activeSubIndex,
   totalSubtitles,
@@ -81,14 +91,20 @@ export const VideoStage: React.FC<VideoStageProps> = ({
 }) => {
   const progressBarRef = useRef<HTMLDivElement | null>(null);
   const [draggingProgress, setDraggingProgress] = useState(false);
+  const [hoverPreview, setHoverPreview] = useState<{ idx: number; pct: number } | null>(null);
 
-  const seekFromClientX = (clientX: number) => {
-    if (totalSubtitles <= 0 || !progressBarRef.current) return;
+  const getIndexFromClientX = (clientX: number): { idx: number; pct: number } | null => {
+    if (totalSubtitles <= 0 || !progressBarRef.current) return null;
     const rect = progressBarRef.current.getBoundingClientRect();
-    if (rect.width <= 0) return;
+    if (rect.width <= 0) return null;
     const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     const idx = Math.min(Math.floor(ratio * totalSubtitles), totalSubtitles - 1);
-    onSeekToSubtitle(idx);
+    return { idx, pct: ratio * 100 };
+  };
+
+  const seekFromClientX = (clientX: number) => {
+    const pos = getIndexFromClientX(clientX);
+    if (pos) onSeekToSubtitle(pos.idx);
   };
 
   const handleSliderKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -116,7 +132,8 @@ export const VideoStage: React.FC<VideoStageProps> = ({
   useEffect(() => {
     if (!draggingProgress) return;
     const handleMove = (e: MouseEvent | TouchEvent) => {
-      const clientX = 'touches' in e && e.touches.length > 0 ? e.touches[0].clientX : (e as MouseEvent).clientX;
+      const clientX =
+        'touches' in e && e.touches.length > 0 ? e.touches[0].clientX : (e as MouseEvent).clientX;
       seekFromClientX(clientX);
     };
     const handleUp = () => setDraggingProgress(false);
@@ -133,22 +150,49 @@ export const VideoStage: React.FC<VideoStageProps> = ({
     };
   });
 
+  const cueTicks = useMemo(() => {
+    const total = subtitles.length;
+    if (total <= 0) return [];
+    const step = total <= MAX_CUE_TICKS ? 1 : Math.ceil(total / MAX_CUE_TICKS);
+    const items: { idx: number; leftPct: number; status: 'extracted' | 'starred' | 'normal' }[] = [];
+
+    for (let i = 0; i < total; i += step) {
+      let status: 'extracted' | 'starred' | 'normal' = 'normal';
+      const end = Math.min(total, i + step);
+      for (let j = i; j < end; j += 1) {
+        if (extractedSubtitles.has(j)) {
+          status = 'extracted';
+          break;
+        }
+        if (starredSubtitles.has(j)) {
+          status = 'starred';
+        }
+      }
+      const leftPct = total === 1 ? 50 : (i / (total - 1)) * 100;
+      items.push({ idx: i, leftPct, status });
+    }
+    return items;
+  }, [subtitles.length, starredSubtitles, extractedSubtitles]);
+
   const percentage =
     totalSubtitles > 0 ? Math.round((progressIndex / totalSubtitles) * 100) : 0;
 
   const showEnText = Boolean(showEnOverlay && activeSubtitle?.text_en && !dictationModeActive);
   const showKrText = Boolean(showKrOverlay && activeSubtitle?.text_kr);
+  const showStandbyOverlay = Boolean(
+    hasMedia && !aviUnsupported && !isPlaying && currentTimeMs < 500,
+  );
+  const hoveredSub =
+    hoverPreview && hoverPreview.idx >= 0 && hoverPreview.idx < subtitles.length
+      ? subtitles[hoverPreview.idx]
+      : null;
 
   return (
-    <div
-      className={`relative flex-1 min-h-0 flex flex-col ${
-        theaterMode ? 'p-0 gap-0' : 'gap-3'
-      }`}
-    >
-      {/* Video Viewport */}
+    <div className="relative flex-1 min-h-0 flex flex-col">
+      {/* Cinema Video Viewport */}
       <div
-        className={`relative flex-1 min-h-[240px] bg-black overflow-hidden flex items-center justify-center ${
-          theaterMode ? 'rounded-none border-none' : 'rounded-2xl border border-line shadow-lg'
+        className={`relative flex-1 min-h-[240px] bg-stage overflow-hidden flex items-center justify-center ${
+          theaterMode ? 'rounded-none border-none' : ''
         }`}
       >
         <video
@@ -165,16 +209,18 @@ export const VideoStage: React.FC<VideoStageProps> = ({
         />
 
         {!hasMedia && !aviUnsupported && (
-          <div className="flex flex-col items-center gap-2.5 px-6 text-center text-slate-400">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/5 border border-white/10">
-              <Film className="w-5 h-5 text-slate-400" />
+          <div className="flex flex-col items-center gap-3 px-6 text-center max-w-md">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-surface-2 border border-line text-accent">
+              <Film className="w-5 h-5" />
             </div>
-            <p className="text-sm font-medium text-slate-300">
-              에피소드 또는 YouTube 영상을 선택하세요
-            </p>
-            <p className="text-xs text-slate-500">
-              로컬 폴더의 MP4 영상이나 YouTube 링크로 바로 섀도잉을 시작할 수 있습니다.
-            </p>
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-ink">
+                에피소드 또는 YouTube 영상을 선택하세요
+              </p>
+              <p className="text-xs text-ink-3 leading-relaxed">
+                상단에서 로컬 에피소드를 고르거나 YouTube URL을 불러와 바로 섀도잉을 시작할 수 있습니다.
+              </p>
+            </div>
           </div>
         )}
 
@@ -184,13 +230,39 @@ export const VideoStage: React.FC<VideoStageProps> = ({
               <AlertTriangle className="w-5 h-5" />
             </div>
             <p className="text-base font-semibold text-danger">재생 불가능한 파일 형식 (.avi)</p>
-            <p className="text-xs leading-relaxed text-slate-400">
+            <p className="text-xs leading-relaxed text-ink-2">
               HTML5 브라우저는 .avi 재생을 지원하지 않습니다. 프로젝트 폴더 내{' '}
-              <code className="px-1.5 py-0.5 rounded bg-white/10 text-slate-200 font-mono">
+              <code className="px-1.5 py-0.5 rounded bg-surface-2 text-ink font-mono">
                 convert_avi_to_mp4.py
               </code>
               를 실행해 MP4로 변환해 주세요.
             </p>
+          </div>
+        )}
+
+        {/* Quiet Standby Launch Cue on Initial Idle Frame */}
+        {showStandbyOverlay && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center px-6">
+            <div className="pointer-events-auto flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-[#0a0d14]/75 backdrop-blur-md px-6 py-5 text-center shadow-2xl max-w-sm">
+              <button
+                type="button"
+                aria-label="영상 재생 시작"
+                onClick={onTogglePlay}
+                className="grid h-12 w-12 place-items-center rounded-full bg-accent hover:bg-accent-hover text-accent-ink shadow-lg transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                <Play className="w-5 h-5 fill-current ml-0.5" />
+              </button>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-[#eef1f6] truncate max-w-[260px]">
+                  {mediaTitle || '재생 준비 완료'}
+                </p>
+                <p className="text-[11px] text-[#a7b0c0]">
+                  <span className="font-mono text-accent">Space</span> 재생 ·{' '}
+                  <span className="font-mono text-accent">← →</span> 문장 이동
+                  {totalSubtitles > 0 && ` · 자막 ${totalSubtitles}줄`}
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -204,7 +276,7 @@ export const VideoStage: React.FC<VideoStageProps> = ({
             {showEnText && activeSubtitle && (
               <div
                 id="overlay-en"
-                className="pointer-events-auto inline-block max-w-[92%] rounded-xl bg-black/75 backdrop-blur-md px-4 py-2 text-lg sm:text-[21px] font-semibold leading-snug text-white shadow-lg border border-white/10"
+                className="pointer-events-auto inline-block max-w-[92%] rounded-xl bg-[#07090f]/80 backdrop-blur-md px-4 py-2 text-lg sm:text-[21px] font-semibold leading-snug text-white shadow-xl border border-white/10"
               >
                 <WordTokens
                   text={activeSubtitle.text_en}
@@ -218,7 +290,7 @@ export const VideoStage: React.FC<VideoStageProps> = ({
             {showKrText && activeSubtitle?.text_kr && (
               <div
                 id="overlay-kr"
-                className="inline-block max-w-[90%] rounded-lg bg-black/65 backdrop-blur-md px-3.5 py-1.5 text-sm sm:text-[15px] text-slate-200 border border-white/5"
+                className="inline-block max-w-[90%] rounded-lg bg-[#07090f]/70 backdrop-blur-md px-3.5 py-1.5 text-sm sm:text-[15px] text-slate-200 border border-white/10"
               >
                 {activeSubtitle.text_kr}
               </div>
@@ -227,7 +299,7 @@ export const VideoStage: React.FC<VideoStageProps> = ({
         )}
       </div>
 
-      {/* Studio Player Controls Bar */}
+      {/* Precision NLE Transport Dock */}
       <div
         ref={controlsHoverRef}
         className={
@@ -237,10 +309,10 @@ export const VideoStage: React.FC<VideoStageProps> = ({
                   ? 'translate-y-0 opacity-100 pointer-events-auto'
                   : 'translate-y-full opacity-0 pointer-events-none'
               }`
-            : 'card-surface rounded-2xl bg-surface border border-line px-4 py-2.5'
+            : 'border-t border-line bg-surface px-4 py-2.5 shrink-0'
         }
       >
-        {/* Row 1: Scrubber & Numeric Readout */}
+        {/* Row 1: NLE Cue-Tick Scrubber & Numeric Readout */}
         <div className="flex items-center gap-3 mb-2">
           <span className="num font-mono text-[11px] font-medium text-ink-3 w-11 shrink-0">
             {formatTime(currentTimeMs)}
@@ -259,17 +331,73 @@ export const VideoStage: React.FC<VideoStageProps> = ({
               setDraggingProgress(true);
               seekFromClientX(e.clientX);
             }}
+            onMouseMove={(e) => {
+              const pos = getIndexFromClientX(e.clientX);
+              if (pos) setHoverPreview(pos);
+            }}
+            onMouseLeave={() => setHoverPreview(null)}
             onTouchStart={(e) => {
               setDraggingProgress(true);
               if (e.touches.length > 0) seekFromClientX(e.touches[0].clientX);
             }}
-            className="group flex-1 h-4 flex items-center cursor-pointer"
+            className="group relative flex-1 h-5 flex flex-col justify-center cursor-pointer"
           >
-            <div className="w-full h-1 group-hover:h-1.5 rounded-full bg-surface-2 border border-line/40 overflow-hidden transition-all">
+            {hoverPreview && totalSubtitles > 0 && (
               <div
-                className="h-full bg-accent rounded-full transition-[width] duration-200"
+                data-testid="scrubber-hover-tip"
+                style={{ left: `${Math.max(8, Math.min(92, hoverPreview.pct))}%` }}
+                className="pointer-events-none absolute bottom-full mb-1.5 -translate-x-1/2 z-30 max-w-[260px] rounded-lg border border-line-strong bg-surface-2 px-2.5 py-1 text-[11px] text-ink shadow-xl whitespace-nowrap truncate"
+              >
+                <span className="num font-mono font-semibold text-accent">
+                  #{hoverPreview.idx + 1}
+                </span>
+                {hoveredSub && (
+                  <span className="num font-mono text-ink-3 ml-1.5">
+                    {formatTime(hoveredSub.start_ms)}
+                  </span>
+                )}
+                {!dictationModeActive && hoveredSub?.text_en && (
+                  <span className="text-ink-2 ml-1.5">· {hoveredSub.text_en}</span>
+                )}
+              </div>
+            )}
+
+            {/* Track + Progress Fill + Handle */}
+            <div className="relative w-full h-1.5 group-hover:h-2 rounded-full bg-surface-2 overflow-visible transition-all">
+              <div
+                className="h-full bg-accent rounded-full transition-[width] duration-150 relative"
                 style={{ width: `${percentage}%` }}
-              />
+              >
+                <span
+                  aria-hidden="true"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-2.5 h-2.5 rounded-full bg-accent shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                />
+              </div>
+            </div>
+
+            {/* Cue Tick Rail */}
+            <div
+              data-testid="cue-ticks-rail"
+              aria-hidden="true"
+              className="relative w-full h-1 mt-0.5 overflow-hidden"
+            >
+              {cueTicks.map((tick) => {
+                const colorClass =
+                  tick.status === 'extracted'
+                    ? 'bg-good'
+                    : tick.status === 'starred'
+                      ? 'bg-accent'
+                      : tick.idx === activeSubIndex
+                        ? 'bg-ink'
+                        : 'bg-line-strong';
+                return (
+                  <span
+                    key={tick.idx}
+                    style={{ left: `${tick.leftPct}%` }}
+                    className={`absolute top-0 bottom-0 w-[2px] -translate-x-1/2 rounded-full ${colorClass}`}
+                  />
+                );
+              })}
             </div>
           </div>
 
@@ -278,9 +406,9 @@ export const VideoStage: React.FC<VideoStageProps> = ({
           </span>
         </div>
 
-        {/* Row 2: Transport, Loop, Overlay Toggles, Speed, Theater */}
+        {/* Row 2: Hairline Transport Controls */}
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={onPrev}
@@ -294,7 +422,7 @@ export const VideoStage: React.FC<VideoStageProps> = ({
               type="button"
               onClick={onTogglePlay}
               title="재생 / 일시정지 (Space)"
-              className="grid h-9 w-9 place-items-center rounded-xl bg-ink text-canvas hover:opacity-90 transition-opacity cursor-pointer"
+              className="grid h-9 w-9 place-items-center rounded-full bg-accent hover:bg-accent-hover text-accent-ink shadow-xs transition-transform active:scale-95 cursor-pointer"
             >
               {isPlaying ? (
                 <Pause className="w-4 h-4 fill-current" />
@@ -312,17 +440,17 @@ export const VideoStage: React.FC<VideoStageProps> = ({
               <ChevronRight className="w-4 h-4" />
             </button>
 
-            <div className="h-4 w-px bg-line mx-1" />
+            <div className="h-4 w-px bg-line mx-1.5" />
 
             <button
               type="button"
               aria-pressed={abLoopActive}
               onClick={onToggleABLoop}
               title="현재 대사 구간 반복 토글 (R)"
-              className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-xl border text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
                 abLoopActive
-                  ? 'bg-accent/15 border-accent/45 text-accent'
-                  : 'bg-surface-2/70 hover:bg-surface-2 border-line text-ink-2 hover:text-ink'
+                  ? 'bg-accent/15 text-accent'
+                  : 'text-ink-2 hover:text-ink hover:bg-surface-2'
               }`}
             >
               <Repeat className="w-3.5 h-3.5" />
@@ -332,7 +460,7 @@ export const VideoStage: React.FC<VideoStageProps> = ({
 
           <div className="flex items-center gap-2">
             {/* Video Subtitle Overlay Pills */}
-            <div className="inline-flex items-center rounded-lg bg-surface-2 border border-line p-0.5 gap-0.5">
+            <div className="inline-flex items-center rounded-lg bg-surface-2 p-0.5 gap-0.5">
               <button
                 type="button"
                 aria-pressed={showEnOverlay}
@@ -340,7 +468,7 @@ export const VideoStage: React.FC<VideoStageProps> = ({
                 title="영상 영어 자막 오버레이 토글"
                 className={`h-6 px-2 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
                   showEnOverlay
-                    ? 'bg-surface text-accent border border-line-strong'
+                    ? 'bg-surface-3 text-accent shadow-[0_1px_0_var(--line-strong)_inset]'
                     : 'text-ink-3 hover:text-ink'
                 }`}
               >
@@ -353,7 +481,7 @@ export const VideoStage: React.FC<VideoStageProps> = ({
                 title="영상 한국어 자막 오버레이 토글"
                 className={`h-6 px-2 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
                   showKrOverlay
-                    ? 'bg-surface text-accent border border-line-strong'
+                    ? 'bg-surface-3 text-accent shadow-[0_1px_0_var(--line-strong)_inset]'
                     : 'text-ink-3 hover:text-ink'
                 }`}
               >
@@ -362,7 +490,7 @@ export const VideoStage: React.FC<VideoStageProps> = ({
             </div>
 
             {/* Speed Control */}
-            <div className="flex items-center gap-1.5 rounded-xl bg-surface-2 border border-line px-2.5 h-8">
+            <div className="flex items-center gap-1.5 rounded-lg bg-surface-2/80 px-2.5 h-7">
               <span className="text-[11px] text-ink-3 font-medium">속도</span>
               <input
                 type="range"
@@ -389,10 +517,10 @@ export const VideoStage: React.FC<VideoStageProps> = ({
               aria-pressed={theaterMode}
               onClick={onToggleTheater}
               title={theaterMode ? '기본 화면 / 사이드바 열기 (F)' : '시어터 모드 / 사이드바 접기 (F)'}
-              className={`grid h-8 w-8 place-items-center rounded-xl border transition-colors cursor-pointer ${
+              className={`grid h-8 w-8 place-items-center rounded-lg transition-colors cursor-pointer ${
                 theaterMode
-                  ? 'bg-accent/15 border-accent/45 text-accent'
-                  : 'bg-surface-2 hover:bg-line border-line text-ink-2 hover:text-ink'
+                  ? 'bg-accent/15 text-accent'
+                  : 'text-ink-2 hover:text-ink hover:bg-surface-2'
               }`}
             >
               {theaterMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}

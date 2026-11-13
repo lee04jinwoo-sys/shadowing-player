@@ -243,14 +243,14 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       {/* Sub-Tabs */}
-      <div className="px-4 pt-3 pb-2.5 border-b border-line space-y-2.5">
-        <div className="grid grid-cols-2 rounded-xl bg-surface-2 border border-line p-1 gap-1">
+      <div className="px-3.5 pt-2.5 pb-2 border-b border-line space-y-2">
+        <div className="grid grid-cols-2 rounded-lg bg-surface-2 p-0.5 gap-0.5">
           <button
             type="button"
             onClick={() => setActiveTab('sentences')}
-            className={`inline-flex items-center justify-center gap-1.5 h-8 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+            className={`inline-flex items-center justify-center gap-1.5 h-7 rounded-md text-xs font-medium transition-colors cursor-pointer ${
               activeTab === 'sentences'
-                ? 'bg-surface text-ink border border-line-strong shadow-xs'
+                ? 'bg-surface-3 text-ink shadow-[0_1px_0_var(--line-strong)_inset]'
                 : 'text-ink-3 hover:text-ink'
             }`}
           >
@@ -261,9 +261,9 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('words')}
-            className={`inline-flex items-center justify-center gap-1.5 h-8 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+            className={`inline-flex items-center justify-center gap-1.5 h-7 rounded-md text-xs font-medium transition-colors cursor-pointer ${
               activeTab === 'words'
-                ? 'bg-surface text-ink border border-line-strong shadow-xs'
+                ? 'bg-surface-3 text-ink shadow-[0_1px_0_var(--line-strong)_inset]'
                 : 'text-ink-3 hover:text-ink'
             }`}
           >
@@ -272,14 +272,14 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
           </button>
         </div>
 
-        <div className="flex items-center justify-end gap-1.5">
+        <div className="flex items-center justify-end gap-1">
           <button
             type="button"
             disabled={!hasCurrentItems || exportingKind !== null}
             onClick={() => handleExportFile('apkg')}
-            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg bg-surface-2 hover:bg-line border border-line text-[11px] font-medium text-ink-2 hover:text-ink disabled:opacity-40 cursor-pointer"
+            className="inline-flex items-center gap-1 h-7 px-2 rounded-md hover:bg-surface-2 text-[11px] font-medium text-ink-2 hover:text-ink disabled:opacity-40 cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3 h-3" />
             <span>{exportingKind === 'apkg' ? '생성 중' : '.apkg'}</span>
           </button>
 
@@ -287,9 +287,9 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
             type="button"
             disabled={!hasCurrentItems || exportingKind !== null}
             onClick={() => handleExportFile('csv')}
-            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg bg-surface-2 hover:bg-line border border-line text-[11px] font-medium text-ink-2 hover:text-ink disabled:opacity-40 cursor-pointer"
+            className="inline-flex items-center gap-1 h-7 px-2 rounded-md hover:bg-surface-2 text-[11px] font-medium text-ink-2 hover:text-ink disabled:opacity-40 cursor-pointer"
           >
-            <Table2 className="w-3.5 h-3.5" />
+            <Table2 className="w-3 h-3" />
             <span>{exportingKind === 'csv' ? '생성 중' : '.csv'}</span>
           </button>
 
@@ -297,7 +297,7 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
             type="button"
             disabled={!hasCurrentItems || exportingKind !== null}
             onClick={activeTab === 'sentences' ? handleBulkExportSentences : handleBulkExportVocab}
-            className="inline-flex items-center gap-1.5 h-7 px-3 rounded-lg bg-accent hover:bg-accent-hover disabled:opacity-40 text-white text-[11px] font-semibold transition-colors whitespace-nowrap cursor-pointer"
+            className="inline-flex items-center gap-1.5 h-7 px-3 rounded-md bg-accent hover:bg-accent-hover disabled:opacity-40 text-accent-ink text-[11px] font-semibold transition-colors whitespace-nowrap cursor-pointer"
           >
             {exportingKind === 'anki' ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -332,7 +332,7 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
               return (
                 <div
                   key={idx}
-                  className="card-surface rounded-xl bg-surface-2/60 border border-line p-3 space-y-2"
+                  className="card-surface rounded-xl bg-canvas/55 border border-line p-3 space-y-2"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="num font-mono text-[11px] text-ink-3">{timeStr}</span>
@@ -388,7 +388,7 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
             return (
               <div
                 key={v.id}
-                className="card-surface rounded-xl bg-surface-2/60 border border-accent/25 p-3 space-y-2"
+                className="card-surface rounded-xl bg-canvas/55 border border-accent/25 p-3 space-y-2"
               >
                 <div className="flex items-center justify-between gap-2">
                   <input
