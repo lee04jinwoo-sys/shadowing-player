@@ -95,5 +95,10 @@ def test_no_route_opens_the_mac_anki_app():
     assert _client().post("/api/anki/launch").status_code in (404, 405)
     for path in (ROOT / "backend").rglob("*.py"):
         assert '"open", "-a", "Anki"' not in path.read_text(), path
-    assert "launchAnki" not in (ROOT / "frontend/js/api.js").read_text()
-    assert "launchAnki" not in (ROOT / "frontend/js/app.js").read_text()
+    src_files = [
+        p for p in (ROOT / "frontend" / "src").rglob("*")
+        if p.suffix in {".ts", ".tsx", ".js", ".jsx"}
+    ]
+    assert src_files, "frontend/src files must exist"
+    for path in src_files:
+        assert "launchAnki" not in path.read_text(), path

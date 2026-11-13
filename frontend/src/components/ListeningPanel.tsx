@@ -1,0 +1,247 @@
+import React, { useEffect, useRef } from 'react';
+import { Eye, EyeOff, Play, Star } from 'lucide-react';
+import type { DictPopoverRequest, SavedVocabItem, SubtitleItem } from '../types';
+import { formatTime } from '../utils/subtitles';
+import { WordTokens } from './WordTokens';
+
+interface ListeningPanelProps {
+  subtitles: SubtitleItem[];
+  activeSubIndex: number;
+  playbackSpeed: number;
+  blurRevealed: boolean;
+  starredSubtitles: Set<number>;
+  extractedSubtitles: Set<number>;
+  savedVocab: SavedVocabItem[];
+  loadingMessage: string | null;
+  errorMessage: string | null;
+  errorHintQuery: string | null;
+  onExploreHint: (query: string) => void;
+  onSwitchToLocal: () => void;
+  onToggleBlur: () => void;
+  onToggleStar: (idx: number) => void;
+  onSeekToSubtitle: (idx: number) => void;
+  onLookupWord: (req: DictPopoverRequest) => void;
+}
+
+export const ListeningPanel: React.FC<ListeningPanelProps> = ({
+  subtitles,
+  activeSubIndex,
+  playbackSpeed,
+  blurRevealed,
+  starredSubtitles,
+  extractedSubtitles,
+  savedVocab,
+  loadingMessage,
+  errorMessage,
+  errorHintQuery,
+  onExploreHint,
+  onSwitchToLocal,
+  onToggleBlur,
+  onToggleStar,
+  onSeekToSubtitle,
+  onLookupWord,
+}) => {
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const rowRefs = useRef<Record<number, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    if (activeSubIndex < 0) return;
+    const container = listRef.current;
+    const row = rowRefs.current[activeSubIndex];
+    if (!container || !row) return;
+
+    const targetTop = row.offsetTop - container.clientHeight / 2 + row.offsetHeight / 2;
+    container.scrollTo({
+      top: Math.max(0, targetTop),
+      behavior: playbackSpeed > 1.2 ? 'auto' : 'smooth',
+    });
+  }, [activeSubIndex, playbackSpeed]);
+
+  const activeIsStarred = activeSubIndex >= 0 && starredSubtitles.has(activeSubIndex);
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col">
+      {/* Sub-header toolbar */}
+      <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-line bg-surface-2/40">
+        <span className="num text-xs font-medium text-ink-2">
+          자막 {subtitles.length > 0 ? `${subtitles.length}줄` : '목록'}
+        </span>
+
+        <div className="flex items-center gap-1.5">
+          {activeSubIndex >= 0 && (
+            <button
+              type="button"
+              onClick={() => onToggleStar(activeSubIndex)}
+              title="현재 문장 보관/해제 (A)"
+              className={`inline-flex items-center gap-1 h-7 px-2.5 rounded-lg border text-[11px] font-medium transition-colors cursor-pointer ${
+                activeIsStarred
+                  ? 'bg-warn/15 border-warn/40 text-warn'
+                  : 'bg-surface hover:bg-surface-2 border-line text-ink-2 hover:text-ink'
+              }`}
+            >
+              <Star className={`w-3.5 h-3.5 ${activeIsStarred ? 'fill-current' : ''}`} />
+              <span>{activeIsStarred ? '보관됨' : '보관 (A)'}</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={onToggleBlur}
+            title="전체 자막 블러 토글 (V)"
+            className={`inline-flex items-center gap-1 h-7 px-2.5 rounded-lg border text-[11px] font-medium transition-colors cursor-pointer ${
+              blurRevealed
+                ? 'bg-accent/15 border-accent/40 text-accent'
+                : 'bg-surface hover:bg-surface-2 border-line text-ink-2 hover:text-ink'
+            }`}
+          >
+            {blurRevealed ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+            <span>{blurRevealed ? '자막 보임 (V)' : '자막 숨김 (V)'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Subtitle list */}
+      <div
+        ref={listRef}
+        className={`flex-1 overflow-y-auto p-3 space-y-1.5 ${
+          !blurRevealed ? 'listening-blurred' : ''
+        }`}
+      >
+        {loadingMessage && (
+          <div className="py-12 px-4 text-center text-xs text-ink-2">{loadingMessage}</div>
+        )}
+
+        {!loadingMessage && errorMessage && (
+          <div className="space-y-3 py-8 px-3">
+            <div className="text-center text-xs font-medium text-danger">{errorMessage}</div>
+            {errorHintQuery && (
+              <div className="p-3.5 rounded-xl bg-surface-2 border border-line text-center space-y-2.5">
+                <p className="text-xs text-ink-2 leading-relaxed">
+                  내 컴퓨터의 로컬 영상을 보려면 상단{' '}
+                  <button
+                    type="button"
+                    onClick={onSwitchToLocal}
+                    className="font-semibold text-accent underline underline-offset-2 cursor-pointer"
+                  >
+                    로컬
+                  </button>{' '}
+                  탭을 선택하세요.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onExploreHint(errorHintQuery)}
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-semibold cursor-pointer"
+                >
+                  <span>&apos;{errorHintQuery}&apos; 유튜브 탐색하기</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!loadingMessage && !errorMessage && subtitles.length === 0 && (
+          <div className="py-12 px-4 text-center text-xs text-ink-3 leading-relaxed">
+            에피소드 또는 유튜브 영상을 불러오면 자막 목록이 여기에 표시됩니다.
+          </div>
+        )}
+
+        {!loadingMessage &&
+          !errorMessage &&
+          subtitles.map((sub, idx) => {
+            const isActive = idx === activeSubIndex;
+            const isExtracted = extractedSubtitles.has(idx);
+            const isStarred = starredSubtitles.has(idx);
+
+            const leftAccentClass = isExtracted
+              ? 'border-l-[3px] border-l-good'
+              : isStarred
+                ? 'border-l-[3px] border-l-warn'
+                : 'border-l-[3px] border-l-transparent';
+
+            return (
+              <div
+                key={`${sub.start_ms}-${idx}`}
+                ref={(el) => {
+                  rowRefs.current[idx] = el;
+                }}
+                onClick={(e) => {
+                  const sel = window.getSelection();
+                  if (sel && sel.toString().trim().length > 0) return;
+                  if ((e.target as HTMLElement).closest('.word-token')) return;
+                  onSeekToSubtitle(idx);
+                }}
+                className={`subtitle-row group relative rounded-xl px-3.5 py-3 border transition-colors cursor-pointer ${leftAccentClass} ${
+                  isActive
+                    ? 'bg-accent/10 border-accent/35'
+                    : 'bg-transparent border-transparent hover:bg-surface-2/80 hover:border-line'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className="num font-mono text-[10px] font-medium text-ink-3">
+                      {formatTime(sub.start_ms)}
+                    </span>
+                    {isExtracted && (
+                      <span className="px-1.5 py-0.5 rounded bg-good/15 text-good text-[10px] font-semibold">
+                        추출됨
+                      </span>
+                    )}
+                    {!isExtracted && isStarred && (
+                      <span className="px-1.5 py-0.5 rounded bg-warn/15 text-warn text-[10px] font-semibold">
+                        보관됨
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleStar(idx);
+                      }}
+                      title="이 문장 보관/해제"
+                      className={`grid h-6 w-6 place-items-center rounded-md border transition-colors cursor-pointer ${
+                        isStarred
+                          ? 'bg-warn/15 border-warn/40 text-warn'
+                          : 'bg-surface border-line text-ink-3 hover:text-ink'
+                      }`}
+                    >
+                      <Star className={`w-3 h-3 ${isStarred ? 'fill-current' : ''}`} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSeekToSubtitle(idx);
+                      }}
+                      title="이 구간 재생"
+                      className="grid h-6 w-6 place-items-center rounded-md bg-surface border border-line text-ink-3 hover:text-ink cursor-pointer"
+                    >
+                      <Play className="w-3 h-3 fill-current" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="sub-text-en text-[14px] sm:text-[15px] font-medium leading-relaxed text-ink">
+                  <WordTokens
+                    text={sub.text_en}
+                    contextSentence={sub.text_en}
+                    scopeKey={`sub-${idx}`}
+                    savedVocab={savedVocab}
+                    onLookupWord={onLookupWord}
+                  />
+                </div>
+
+                {sub.text_kr && (
+                  <div className="sub-text-kr mt-1 text-xs leading-relaxed text-ink-2">
+                    {sub.text_kr}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+      </div>
+    </div>
+  );
+};

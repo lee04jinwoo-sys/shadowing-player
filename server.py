@@ -3,7 +3,7 @@ import os
 import logging
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from dotenv import load_dotenv
@@ -61,26 +61,56 @@ app.include_router(settings_router.router)
 app.include_router(auth_router.router)
 
 _FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
+_DIST_DIR = _FRONTEND_DIR / "dist"
+
 
 @app.middleware("http")
 async def revalidate_frontend(request, call_next):
     """Browser must re-check JS/CSS/HTML on each load (ETag keeps it cheap), so updates show up."""
     response = await call_next(request)
-    if request.url.path == "/" or request.url.path.startswith(("/js/", "/css/")):
+    path = request.url.path
+    if (
+        path == "/"
+        or path.startswith("/assets/")
+        or path.endswith((".html", ".js", ".css"))
+    ):
         response.headers["Cache-Control"] = "no-cache"
     return response
 
-# Mount static files (CRITICAL for CSS/JS to work)
-app.mount("/css", StaticFiles(directory=str(_FRONTEND_DIR / "css")), name="css")
-app.mount("/js", StaticFiles(directory=str(_FRONTEND_DIR / "js")), name="js")
+
+if (_DIST_DIR / "assets").is_dir():
+    app.mount("/assets", StaticFiles(directory=str(_DIST_DIR / "assets")), name="assets")
+
 
 @app.api_route("/", methods=["GET", "HEAD"])
 def read_root():
-    return FileResponse(str(_FRONTEND_DIR / "index.html"))
+    index_file = _DIST_DIR / "index.html"
+    if not index_file.is_file():
+        raise HTTPException(status_code=503, detail="Frontend bundle not built. Run npm run build in frontend/.")
+    return FileResponse(str(index_file))
+
 
 @app.api_route("/health", methods=["GET", "HEAD"])
 def health_check():
     return {"status": "ok"}
+
+
+@app.api_route("/{full_path:path}", methods=["GET", "HEAD"])
+def spa_fallback(full_path: str):
+    if full_path == "api" or full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    if _DIST_DIR.is_dir():
+        dist_root = _DIST_DIR.resolve()
+        candidate = (_DIST_DIR / full_path).resolve()
+        if candidate.is_relative_to(dist_root) and candidate.is_file():
+            return FileResponse(str(candidate))
+
+        index_file = _DIST_DIR / "index.html"
+        if index_file.is_file():
+            return FileResponse(str(index_file))
+
+    raise HTTPException(status_code=404, detail="Not Found")
 
 if __name__ == "__main__":
     import uvicorn

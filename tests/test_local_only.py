@@ -92,4 +92,19 @@ def test_public_deploy_configs_are_gone(name):
 
 
 def test_frontend_files_are_revalidated(client):
-    assert client.get("/js/app.js").headers.get("cache-control") == "no-cache"
+    res_root = client.get("/")
+    assert res_root.status_code == 200
+    assert res_root.headers.get("cache-control") == "no-cache"
+
+    dist_assets = ROOT / "frontend" / "dist" / "assets"
+    asset_files = list(dist_assets.glob("*.js")) if dist_assets.exists() else []
+    assert asset_files, "Built frontend/dist/assets JS bundle must exist"
+    asset_path = f"/assets/{asset_files[0].name}"
+    res_asset = client.get(asset_path)
+    assert res_asset.status_code == 200
+    assert res_asset.headers.get("cache-control") == "no-cache"
+
+
+def test_spa_fallback_does_not_mask_api_404(client):
+    res = client.get("/api/nonexistent-endpoint")
+    assert res.status_code == 404
