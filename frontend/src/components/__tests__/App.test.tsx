@@ -10,6 +10,7 @@ describe('App UI shell & interactions', () => {
         return new Response(
           JSON.stringify([
             { ep_key: 's01e01', video_filename: 'S01E01.mp4', format: 'mp4', video_path: '/tmp/S01E01.mp4' },
+            { ep_key: 's01e02', video_filename: 'S01E02.mp4', format: 'mp4', video_path: '/tmp/S01E02.mp4' },
           ]),
           { status: 200 },
         );
@@ -133,6 +134,94 @@ describe('App UI shell & interactions', () => {
     await waitFor(() => {
       const saved = JSON.parse(localStorage.getItem('shadowing_extracted') || '{}') as Record<string, number[]>;
       expect(saved.s01e01?.slice().sort()).toEqual([0, 1]);
+    });
+  });
+
+  it('preserves mounted local video element and stream src when visiting explore and returning to local', async () => {
+    const { container } = render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('쇼에 오신 것을 환영합니다.')).toBeInTheDocument();
+    });
+
+    const initialVideo = container.querySelector('video');
+    expect(initialVideo).not.toBeNull();
+    expect(initialVideo?.getAttribute('src')).toContain('/api/video/s01e01');
+
+    fireEvent.click(screen.getByRole('button', { name: /탐색/ }));
+    expect(screen.getByText('YouTube 쉐도잉 탐색')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^로컬$/ }));
+    const restoredVideo = container.querySelector('video');
+    expect(restoredVideo).toBe(initialVideo);
+    expect(restoredVideo?.getAttribute('src')).toContain('/api/video/s01e01');
+  });
+
+  it('ignores stale subtitle response when switching episodes quickly', async () => {
+    let resolveSlowEp2: ((res: Response) => void) | null = null;
+    const baseFetch = vi.mocked(globalThis.fetch);
+
+    baseFetch.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.startsWith('/api/files')) {
+        return new Response(
+          JSON.stringify([
+            { ep_key: 's01e01', video_filename: 'S01E01.mp4', format: 'mp4', video_path: '/tmp/S01E01.mp4' },
+            { ep_key: 's01e02', video_filename: 'S01E02.mp4', format: 'mp4', video_path: '/tmp/S01E02.mp4' },
+            { ep_key: 's01e03', video_filename: 'S01E03.mp4', format: 'mp4', video_path: '/tmp/S01E03.mp4' },
+          ]),
+          { status: 200 },
+        );
+      }
+      if (url.startsWith('/api/anki/status')) {
+        return new Response(JSON.stringify({ connected: true, reason: 'ok' }), { status: 200 });
+      }
+      if (url.startsWith('/api/subtitles/s01e02')) {
+        return new Promise<Response>((resolve) => {
+          resolveSlowEp2 = resolve;
+        });
+      }
+      if (url.startsWith('/api/subtitles/s01e03')) {
+        return new Response(
+          JSON.stringify([{ start_ms: 1000, end_ms: 3000, text_en: 'Episode 3 latest.', text_kr: '에피소드 3 최신' }]),
+          { status: 200 },
+        );
+      }
+      if (url.startsWith('/api/subtitles/s01e01')) {
+        return new Response(
+          JSON.stringify([{ start_ms: 1000, end_ms: 3500, text_en: 'Welcome to the show.', text_kr: '쇼에 오신 것을 환영합니다.' }]),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
+    });
+
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByText('쇼에 오신 것을 환영합니다.')).toBeInTheDocument();
+    });
+
+    const epTrigger = screen.getByRole('button', { name: '에피소드 선택' });
+    fireEvent.click(epTrigger);
+    fireEvent.click(screen.getByRole('option', { name: /S01E02/i }));
+
+    fireEvent.click(epTrigger);
+    fireEvent.click(screen.getByRole('option', { name: /S01E03/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('에피소드 3 최신')).toBeInTheDocument();
+    });
+
+    resolveSlowEp2?.(
+      new Response(
+        JSON.stringify([{ start_ms: 500, end_ms: 2000, text_en: 'Stale episode 2.', text_kr: '오래된 에피소드 2' }]),
+        { status: 200 },
+      ),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText('오래된 에피소드 2')).not.toBeInTheDocument();
+      expect(screen.getByText('에피소드 3 최신')).toBeInTheDocument();
     });
   });
 });

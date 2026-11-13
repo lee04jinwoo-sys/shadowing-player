@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import type { DictPopoverAnchor, DictPopoverRequest, SavedVocabItem } from '../types';
 import { tokenizeEnglishSubtitle } from '../utils/subtitles';
 
@@ -10,13 +10,6 @@ interface WordTokensProps {
   onLookupWord: (req: DictPopoverRequest) => void;
   className?: string;
 }
-
-interface LastClickedTokenRef {
-  scopeKey: string;
-  tokenIdx: number;
-}
-
-let sharedLastClicked: LastClickedTokenRef | null = null;
 
 function clearTokenSelectionClasses(): void {
   document.querySelectorAll('.word-token.token-selected').forEach((el) => {
@@ -60,7 +53,12 @@ export const WordTokens: React.FC<WordTokensProps> = ({
   className = '',
 }) => {
   const containerRef = useRef<HTMLSpanElement | null>(null);
+  const lastClickedIdxRef = useRef<number | null>(null);
   const segments = tokenizeEnglishSubtitle(text, savedVocab);
+
+  useEffect(() => {
+    lastClickedIdxRef.current = null;
+  }, [text, scopeKey]);
 
   let wordIdxCounter = -1;
 
@@ -76,15 +74,11 @@ export const WordTokens: React.FC<WordTokensProps> = ({
     const container = containerRef.current;
     if (!container) return;
 
-    if (
-      e.shiftKey &&
-      sharedLastClicked &&
-      sharedLastClicked.scopeKey === scopeKey &&
-      sharedLastClicked.tokenIdx !== tokenIdx
-    ) {
+    const prevIdx = lastClickedIdxRef.current;
+    if (e.shiftKey && prevIdx !== null && prevIdx !== tokenIdx) {
       const allTokens = Array.from(container.querySelectorAll('.word-token'));
-      const start = Math.min(sharedLastClicked.tokenIdx, tokenIdx);
-      const end = Math.max(sharedLastClicked.tokenIdx, tokenIdx);
+      const start = Math.min(prevIdx, tokenIdx);
+      const end = Math.max(prevIdx, tokenIdx);
       const selected = allTokens.slice(start, end + 1);
 
       clearTokenSelectionClasses();
@@ -95,13 +89,13 @@ export const WordTokens: React.FC<WordTokensProps> = ({
       if (phrase && rect) {
         onLookupWord({ word: phrase, context: contextSentence, anchorRect: rect });
       }
-      sharedLastClicked = { scopeKey, tokenIdx };
+      lastClickedIdxRef.current = tokenIdx;
       return;
     }
 
     clearTokenSelectionClasses();
     e.currentTarget.classList.add('token-selected');
-    sharedLastClicked = { scopeKey, tokenIdx };
+    lastClickedIdxRef.current = tokenIdx;
 
     const r = e.currentTarget.getBoundingClientRect();
     onLookupWord({

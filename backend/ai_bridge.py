@@ -1,19 +1,54 @@
+import asyncio
+import json
+import logging
 import os
+
+from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from dotenv import load_dotenv
+
+from backend.app_dirs import get_google_api_key
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
+_cached_api_key: str | None = GOOGLE_API_KEY
+_client_factory = genai.Client
 if GOOGLE_API_KEY:
     client = genai.Client(api_key=GOOGLE_API_KEY)
 else:
     client = None
+_built_client = client
+
+
+def _get_genai_client():
+    """Return a Gemini client matching the active API key and genai.Client factory."""
+    global client, _cached_api_key, _built_client, _client_factory
+    if client is not _built_client and client is not None:
+        return client
+
+    api_key = get_google_api_key()
+    if not api_key:
+        client = None
+        _built_client = None
+        _cached_api_key = None
+        return None
+
+    factory_changed = genai.Client is not _client_factory
+    if client is None or api_key != _cached_api_key or factory_changed:
+        client = genai.Client(api_key=api_key)
+        _built_client = client
+        _cached_api_key = api_key
+        _client_factory = genai.Client
+    return client
+
 
 def get_ai_explanation(sentence: str) -> dict:
-    if not client:
+    genai_client = _get_genai_client()
+    if not genai_client:
         return {"success": False, "error": "Gemini API 키가 설정되지 않았습니다."}
     
     prompt = f"""다음 영어 문장의 뜻과 핵심 표현, 뉘앙스를 한국어로 설명해줘:
@@ -27,7 +62,7 @@ def get_ai_explanation(sentence: str) -> dict:
 - 깔끔한 마크다운 양식을 사용해줘.
 """
     try:
-        response = client.models.generate_content(
+        response = genai_client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
         )
@@ -35,11 +70,11 @@ def get_ai_explanation(sentence: str) -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-import json
-import asyncio
-
 async def _process_chunk_async(i, chunk):
-    print(f"Processing chunk {i} to {i+len(chunk)}...")
+    genai_client = _get_genai_client()
+    if not genai_client:
+        return chunk
+    logger.debug("Processing chunk %s to %s...", i, i + len(chunk))
     prompt = f"""You are an expert English transcriber and editor.
 The following is a JSON array of raw, fragmented video subtitles.
 There are two main issues to fix:
@@ -59,7 +94,7 @@ Raw Subtitles Chunk:
 {json.dumps(chunk, ensure_ascii=False, indent=2)}
 """
     try:
-        response = await client.aio.models.generate_content(
+        response = await genai_client.aio.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
             config=types.GenerateContentConfig(
@@ -73,11 +108,11 @@ Raw Subtitles Chunk:
         else:
             return chunk
     except Exception as e:
-        print(f"Error processing chunk {i}: {e}")
+        logger.warning("Error processing chunk %s: %s", i, e)
         return chunk
 
 async def enhance_subtitles_with_ai(subtitles: list) -> list:
-    if not client:
+    if not _get_genai_client():
         raise Exception("Gemini API 키가 설정되지 않았습니다.")
         
     chunk_size = 60

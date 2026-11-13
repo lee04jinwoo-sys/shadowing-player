@@ -64,3 +64,19 @@
   - **다크**: `--accent: #8b93ff`, `--accent-hover: #757ef5`, `--accent-ink: #0a0d14`(WCAG 대비 `7.14:1`, 기존 흰 글씨 `2.72:1` 대비 개선), `--warn: #fbbf24`.
   - **라이트**: `--accent: #5b63e6`, `--accent-hover: #4b53d1`, `--accent-ink: #ffffff`(대비 `4.8:1`), `--warn: #d97706`.
 - **검증 현황**: `themeTokens.test.ts` Red->Green 포함 Vitest `9`파일 `21`개 테스트 통과, `tsc -b && vite build` 통과, `pytest -q` `35`개 테스트 통과.
+
+## 8. 전체 감사 기반 P0 버그 수정 및 UX/접근성 보강 (5차 패스)
+- **P0-1 (`ExploreView` 왕복 시 `<video>` 손실 수정, `App.tsx`)**: `sourceMode === 'explore'` 진입 시 `player.adapterPause()`로 재생을 일시정지하되 좌측 스테이지/사이드바 컨테이너를 언마운트하지 않고 `hidden` 클래스로 유지해 `로컬` 복귀 시 기존 `<video>` DOM과 스트림 `src`/프레임을 보존.
+- **P0-2 (`backend/ai_bridge.py` API 키 동적 로드 및 로깅 전환)**: 모듈 import 시점 `os.environ.get("GOOGLE_API_KEY")` 고정을 `_get_genai_client()` 동적 `get_google_api_key()` 조회로 교체해 설정 모달 저장 직후 서버 재시작 없이 Gemini 해설이 동작하도록 수정. raw `print()`를 `logging` 로거로 전환.
+- **P0-3 (에피소드/YouTube 급격 전환 레이스 컨디션 방지, `App.tsx`)**: `selectLocalEpisode`, `loadYoutubeVideo`에 `mediaLoadSeqRef` 시퀀스 가드를 도입해 느리게 완료된 이전 비동기 응답이 최신 선택 상태를 덮어쓰지 않도록 차단.
+- **P0-4 (`api.ts` `addVocabCardToAnki` 오류 파싱)**: non-2xx 응답의 `detail`/`duplicate` 추출 및 네트워크 `catch` 구조화 반환을 `addSentenceToAnki`와 일관화.
+- **중간 우선순위 UX/성능/접근성 정비**:
+  - `VideoStage.tsx`: 타임라인 드래그 `useEffect`에 `[draggingProgress]` 의존성 배열과 `seekFromClientXRef` 추가; 비극장 하단 독에 `rounded-b-2xl` 부여.
+  - `App.tsx`: 사이드바 너비 드래그 `useEffect`의 리스너 재등록을 `latestSidebarWidthRef` + `[resizingSidebar]`로 제거; 통합 프레임 `overflow-hidden` 제거해 짧은 화면에서 드롭다운 클리핑 방지.
+  - `MediaContextBar.tsx`: 로컬 에피소드·YouTube 최근 기록 커스텀 리스트박스에 공용 `handleListboxNavigationKey`(`ArrowDown`/`ArrowUp`/`Home`/`End`/`Enter`) 키보드 탐색 추가, 활성 YouTube 기록 `aria-selected={selected}` 및 체크 표시 추가, 온라인 검색 타이머 언마운트 정리, `rounded-t-2xl` 부여.
+  - `ListeningPanel.tsx`: 자막 행 별표/재생 액션에 `sm:group-focus-within:opacity-100` 및 모바일 기본 가시성(`opacity-75 sm:opacity-0`) 적용.
+  - `WordTokens.tsx`: 모듈 전역 `sharedLastClicked`를 컴포넌트 인스턴스 `useRef`로 전환.
+  - `index.html`: 인디고 SVG 데이터 URL 파비콘 `<link rel="icon">` 추가.
+- **TDD Red->Green & 검증 현황**:
+  - 신규/확장 테스트(`tests/test_ai_settings.py`, `frontend/src/utils/__tests__/api.test.ts`, `App.test.tsx` 왕복·레이스 케이스, `MediaContextBar.test.tsx` 키보드·활성 항목 케이스) 모두 선실패(Red) 확인 후 구현 완료.
+  - 최종 검증: Vitest `10`파일 `26`개 테스트 통과, `tsc -b && vite build` 통과, `pytest -q` `36`개 테스트 통과.

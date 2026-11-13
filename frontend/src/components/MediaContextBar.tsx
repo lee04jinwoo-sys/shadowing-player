@@ -11,10 +11,40 @@ import {
 } from 'lucide-react';
 import type { Episode, SourceMode, YouTubeHistoryItem } from '../types';
 
+function handleListboxNavigationKey(
+  e: KeyboardEvent,
+  focusedIdx: number,
+  length: number,
+  setFocusedIdx: React.Dispatch<React.SetStateAction<number>>,
+  onSelect: (idx: number) => void,
+): boolean {
+  if (length <= 0) return false;
+  let handled = true;
+  if (e.key === 'ArrowDown') {
+    setFocusedIdx((prev) => (prev < 0 ? 0 : Math.min(length - 1, prev + 1)));
+  } else if (e.key === 'ArrowUp') {
+    setFocusedIdx((prev) => (prev < 0 ? length - 1 : Math.max(0, prev - 1)));
+  } else if (e.key === 'Home') {
+    setFocusedIdx(0);
+  } else if (e.key === 'End') {
+    setFocusedIdx(length - 1);
+  } else if (e.key === 'Enter' && focusedIdx >= 0 && focusedIdx < length) {
+    onSelect(focusedIdx);
+  } else {
+    handled = false;
+  }
+  if (handled) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  return handled;
+}
+
 interface MediaContextBarProps {
   sourceMode: Exclude<SourceMode, 'explore'>;
   episodes: Episode[];
   selectedEpKey: string;
+  activeMediaKey?: string;
   completedEpisodes: Set<string>;
   extractedByEpisode: Record<string, number[]>;
   onSelectEpisode: (epKey: string) => void;
@@ -32,6 +62,7 @@ export const MediaContextBar: React.FC<MediaContextBarProps> = ({
   sourceMode,
   episodes,
   selectedEpKey,
+  activeMediaKey,
   completedEpisodes,
   extractedByEpisode,
   onSelectEpisode,
@@ -47,12 +78,23 @@ export const MediaContextBar: React.FC<MediaContextBarProps> = ({
   const [subSearchState, setSubSearchState] = useState<'idle' | 'loading' | 'done' | 'fail'>('idle');
   const [epMenuOpen, setEpMenuOpen] = useState(false);
   const [histMenuOpen, setHistMenuOpen] = useState(false);
+  const [focusedEpIdx, setFocusedEpIdx] = useState(-1);
+  const [focusedHistIdx, setFocusedHistIdx] = useState(-1);
 
   const epMenuRef = useRef<HTMLDivElement | null>(null);
   const histMenuRef = useRef<HTMLDivElement | null>(null);
+  const subSearchTimerRef = useRef<number | null>(null);
 
   const activeEpisode = episodes.find((ep) => ep.ep_key === selectedEpKey) ?? null;
   const isCompleted = Boolean(selectedEpKey && completedEpisodes.has(selectedEpKey));
+
+  useEffect(() => {
+    return () => {
+      if (subSearchTimerRef.current !== null) {
+        window.clearTimeout(subSearchTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!epMenuOpen && !histMenuOpen) return;
@@ -69,8 +111,40 @@ export const MediaContextBar: React.FC<MediaContextBarProps> = ({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
         setEpMenuOpen(false);
         setHistMenuOpen(false);
+        return;
+      }
+
+      if (epMenuOpen) {
+        handleListboxNavigationKey(
+          e,
+          focusedEpIdx,
+          episodes.length,
+          setFocusedEpIdx,
+          (idx) => {
+            onSelectEpisode(episodes[idx].ep_key);
+            setEpMenuOpen(false);
+          },
+        );
+        return;
+      }
+
+      if (histMenuOpen) {
+        handleListboxNavigationKey(
+          e,
+          focusedHistIdx,
+          youtubeHistory.length,
+          setFocusedHistIdx,
+          (idx) => {
+            const url = `https://www.youtube.com/watch?v=${youtubeHistory[idx].id}`;
+            onChangeYoutubeUrl(url);
+            onLoadYoutube(url);
+            setHistMenuOpen(false);
+          },
+        );
       }
     };
 
@@ -80,18 +154,58 @@ export const MediaContextBar: React.FC<MediaContextBarProps> = ({
       document.removeEventListener('mousedown', handleMouseDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [epMenuOpen, histMenuOpen]);
+  }, [
+    epMenuOpen,
+    histMenuOpen,
+    episodes,
+    focusedEpIdx,
+    onSelectEpisode,
+    youtubeHistory,
+    focusedHistIdx,
+    onChangeYoutubeUrl,
+    onLoadYoutube,
+  ]);
+
+  const toggleEpisodeMenu = () => {
+    setEpMenuOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        const selectedIdx = episodes.findIndex((ep) => ep.ep_key === selectedEpKey);
+        setFocusedEpIdx(selectedIdx >= 0 ? selectedIdx : episodes.length > 0 ? 0 : -1);
+      }
+      return next;
+    });
+  };
+
+  const toggleHistoryMenu = () => {
+    setHistMenuOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        const activeIdx = activeMediaKey
+          ? youtubeHistory.findIndex((item) => item.id === activeMediaKey)
+          : -1;
+        setFocusedHistIdx(activeIdx >= 0 ? activeIdx : youtubeHistory.length > 0 ? 0 : -1);
+      }
+      return next;
+    });
+  };
 
   const handleOnlineSearch = async () => {
     if (!selectedEpKey || subSearchState === 'loading') return;
     setSubSearchState('loading');
     const ok = await onSearchOnlineSubtitles(selectedEpKey);
     setSubSearchState(ok ? 'done' : 'fail');
-    window.setTimeout(() => setSubSearchState('idle'), 2200);
+    if (subSearchTimerRef.current !== null) {
+      window.clearTimeout(subSearchTimerRef.current);
+    }
+    subSearchTimerRef.current = window.setTimeout(() => {
+      subSearchTimerRef.current = null;
+      setSubSearchState('idle');
+    }, 2200);
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2 bg-surface px-3.5 py-2 shrink-0">
+    <div className="flex flex-wrap items-center gap-2 rounded-t-2xl bg-surface px-3.5 py-2 shrink-0">
       {sourceMode === 'local' ? (
         <>
           <div ref={epMenuRef} className="relative flex-1 min-w-[200px] max-w-xl">
@@ -100,7 +214,7 @@ export const MediaContextBar: React.FC<MediaContextBarProps> = ({
               aria-label="에피소드 선택"
               aria-haspopup="listbox"
               aria-expanded={epMenuOpen}
-              onClick={() => setEpMenuOpen((v) => !v)}
+              onClick={toggleEpisodeMenu}
               className="w-full h-8 px-2.5 rounded-lg bg-surface-2/80 hover:bg-surface-2 flex items-center justify-between gap-2 text-left text-xs transition-colors cursor-pointer"
             >
               <span className="flex items-center gap-2 min-w-0">
@@ -146,8 +260,9 @@ export const MediaContextBar: React.FC<MediaContextBarProps> = ({
                     설정에서 로컬 영상 폴더를 지정해 주세요.
                   </div>
                 ) : (
-                  episodes.map((ep) => {
+                  episodes.map((ep, idx) => {
                     const selected = ep.ep_key === selectedEpKey;
+                    const focused = idx === focusedEpIdx;
                     const done = completedEpisodes.has(ep.ep_key);
                     const extCount = extractedByEpisode[ep.ep_key]?.length || 0;
                     return (
@@ -156,6 +271,8 @@ export const MediaContextBar: React.FC<MediaContextBarProps> = ({
                         type="button"
                         role="option"
                         aria-selected={selected}
+                        onMouseEnter={() => setFocusedEpIdx(idx)}
+                        onFocus={() => setFocusedEpIdx(idx)}
                         onClick={() => {
                           onSelectEpisode(ep.ep_key);
                           setEpMenuOpen(false);
@@ -163,8 +280,10 @@ export const MediaContextBar: React.FC<MediaContextBarProps> = ({
                         className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-left text-xs transition-colors cursor-pointer ${
                           selected
                             ? 'bg-accent/15 text-ink'
-                            : 'text-ink-2 hover:bg-surface-3 hover:text-ink'
-                        }`}
+                            : focused
+                              ? 'bg-surface-3 text-ink'
+                              : 'text-ink-2 hover:bg-surface-3 hover:text-ink'
+                        } ${focused ? 'ring-1 ring-accent/45' : ''}`}
                       >
                         <span className="flex items-center gap-2 min-w-0">
                           <span className="w-3.5 shrink-0 flex items-center justify-center">
@@ -292,7 +411,7 @@ export const MediaContextBar: React.FC<MediaContextBarProps> = ({
               aria-label="최근 유튜브 영상"
               aria-haspopup="listbox"
               aria-expanded={histMenuOpen}
-              onClick={() => setHistMenuOpen((v) => !v)}
+              onClick={toggleHistoryMenu}
               className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-surface-2/80 hover:bg-surface-2 text-xs font-medium text-ink-2 hover:text-ink transition-colors whitespace-nowrap cursor-pointer"
             >
               <History className="w-3.5 h-3.5 text-ink-3" />
@@ -315,24 +434,39 @@ export const MediaContextBar: React.FC<MediaContextBarProps> = ({
                     최근 시청한 YouTube 영상이 없습니다.
                   </div>
                 ) : (
-                  youtubeHistory.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      role="option"
-                      aria-selected={false}
-                      onClick={() => {
-                        const url = `https://www.youtube.com/watch?v=${item.id}`;
-                        onChangeYoutubeUrl(url);
-                        onLoadYoutube(url);
-                        setHistMenuOpen(false);
-                      }}
-                      className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left text-xs text-ink-2 hover:bg-surface-3 hover:text-ink transition-colors cursor-pointer"
-                    >
-                      <Play className="w-3 h-3 text-accent shrink-0" />
-                      <span className="truncate">{item.title}</span>
-                    </button>
-                  ))
+                  youtubeHistory.map((item, idx) => {
+                    const selected = Boolean(activeMediaKey && item.id === activeMediaKey);
+                    const focused = idx === focusedHistIdx;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        role="option"
+                        aria-selected={selected}
+                        onMouseEnter={() => setFocusedHistIdx(idx)}
+                        onFocus={() => setFocusedHistIdx(idx)}
+                        onClick={() => {
+                          const url = `https://www.youtube.com/watch?v=${item.id}`;
+                          onChangeYoutubeUrl(url);
+                          onLoadYoutube(url);
+                          setHistMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-left text-xs transition-colors cursor-pointer ${
+                          selected
+                            ? 'bg-accent/15 text-ink'
+                            : focused
+                              ? 'bg-surface-3 text-ink'
+                              : 'text-ink-2 hover:bg-surface-3 hover:text-ink'
+                        } ${focused ? 'ring-1 ring-accent/45' : ''}`}
+                      >
+                        <span className="flex items-center gap-2 min-w-0">
+                          <Play className="w-3 h-3 text-accent shrink-0" />
+                          <span className="truncate">{item.title}</span>
+                        </span>
+                        {selected && <Check className="w-3.5 h-3.5 text-accent shrink-0" />}
+                      </button>
+                    );
+                  })
                 )}
               </div>
             )}

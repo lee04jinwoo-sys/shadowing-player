@@ -106,6 +106,8 @@ export const VideoStage: React.FC<VideoStageProps> = ({
     const pos = getIndexFromClientX(clientX);
     if (pos) onSeekToSubtitle(pos.idx);
   };
+  const seekFromClientXRef = useRef(seekFromClientX);
+  seekFromClientXRef.current = seekFromClientX;
 
   const handleSliderKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (totalSubtitles <= 0) return;
@@ -134,7 +136,7 @@ export const VideoStage: React.FC<VideoStageProps> = ({
     const handleMove = (e: MouseEvent | TouchEvent) => {
       const clientX =
         'touches' in e && e.touches.length > 0 ? e.touches[0].clientX : (e as MouseEvent).clientX;
-      seekFromClientX(clientX);
+      seekFromClientXRef.current(clientX);
     };
     const handleUp = () => setDraggingProgress(false);
 
@@ -148,7 +150,7 @@ export const VideoStage: React.FC<VideoStageProps> = ({
       document.removeEventListener('mouseup', handleUp);
       document.removeEventListener('touchend', handleUp);
     };
-  });
+  }, [draggingProgress]);
 
   const cueTicks = useMemo(() => {
     const total = subtitles.length;
@@ -309,7 +311,7 @@ export const VideoStage: React.FC<VideoStageProps> = ({
                   ? 'translate-y-0 opacity-100 pointer-events-auto'
                   : 'translate-y-full opacity-0 pointer-events-none'
               }`
-            : 'border-t border-line bg-surface px-4 py-2.5 shrink-0'
+            : 'border-t border-line bg-surface rounded-b-2xl px-4 py-2.5 shrink-0'
         }
       >
         {/* Row 1: NLE Cue-Tick Scrubber & Numeric Readout */}

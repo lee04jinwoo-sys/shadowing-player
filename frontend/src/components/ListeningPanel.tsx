@@ -236,7 +236,7 @@ export const ListeningPanel: React.FC<ListeningPanelProps> = ({
                   )}
                 </div>
 
-                <div className="absolute right-2.5 top-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute right-2.5 top-2 flex items-center gap-0.5 opacity-75 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
                   <button
                     type="button"
                     onClick={(e) => {

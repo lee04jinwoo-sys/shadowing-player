@@ -103,17 +103,39 @@ export async function addVocabCardToAnki(payload: {
   example?: string;
   explanation?: string;
 }): Promise<{ success: boolean; duplicate?: boolean; note_id?: number | string; error?: string }> {
-  const res = await fetch('/api/dict/add-to-anki', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  return (await res.json()) as {
-    success: boolean;
-    duplicate?: boolean;
-    note_id?: number | string;
-    error?: string;
-  };
+  try {
+    const res = await fetch('/api/dict/add-to-anki', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = (await res.json().catch(() => ({}))) as {
+      success?: boolean;
+      duplicate?: boolean;
+      note_id?: number | string;
+      error?: string;
+      detail?: string;
+    };
+    if (!res.ok) {
+      const msg = data.detail || data.error || `단어 전송 실패 (${res.status})`;
+      return {
+        success: false,
+        duplicate: data.duplicate || msg.toLowerCase().includes('duplicate'),
+        error: msg,
+      };
+    }
+    return {
+      success: Boolean(data.success),
+      duplicate: data.duplicate,
+      note_id: data.note_id,
+      error: data.error ?? data.detail,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : '단어 전송 중 네트워크 오류',
+    };
+  }
 }
 
 export async function fetchYouTubeInfo(url: string): Promise<YouTubeInfoResponse> {

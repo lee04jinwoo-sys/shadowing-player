@@ -102,6 +102,9 @@ export default function App() {
   const controlsHoverRef = useRef<HTMLDivElement | null>(null);
   const theaterHideTimerRef = useRef<number | null>(null);
   const didInitialLoadRef = useRef(false);
+  const mediaLoadSeqRef = useRef(0);
+  const latestSidebarWidthRef = useRef(sidebarWidth);
+  latestSidebarWidthRef.current = sidebarWidth;
 
   const clearDictationLine = useCallback(() => {
     setDictationInput('');
@@ -142,6 +145,7 @@ export default function App() {
   const selectLocalEpisode = useCallback(
     async (epKey: string, epListOverride?: Episode[], resumeMs?: number) => {
       if (!epKey) return;
+      const seq = ++mediaLoadSeqRef.current;
       const list = epListOverride ?? episodes;
       const ep = list.find((item) => item.ep_key === epKey);
 
@@ -164,6 +168,7 @@ export default function App() {
 
       try {
         const subs = await fetchSubtitles(epKey);
+        if (seq !== mediaLoadSeqRef.current) return;
         setSubtitles(subs);
         if (subs.length === 0) {
           setSubErrorMsg(
@@ -173,9 +178,12 @@ export default function App() {
           player.syncResumeIndex(subs, resumeMs);
         }
       } catch {
+        if (seq !== mediaLoadSeqRef.current) return;
         setSubErrorMsg('자막을 불러오지 못했습니다.');
       } finally {
-        setSubLoadingMsg(null);
+        if (seq === mediaLoadSeqRef.current) {
+          setSubLoadingMsg(null);
+        }
       }
     },
     [episodes, player, collections, clearDictationLine],
@@ -189,6 +197,7 @@ export default function App() {
         return;
       }
 
+      const seq = ++mediaLoadSeqRef.current;
       setYoutubeLoading(true);
       setSubErrorMsg(null);
       setSubErrorHintQuery(null);
@@ -196,6 +205,7 @@ export default function App() {
 
       try {
         const info = await fetchYouTubeInfo(trimmed);
+        if (seq !== mediaLoadSeqRef.current) return;
         const videoId = info.video_id;
         const title = info.title || videoId;
 
@@ -216,6 +226,7 @@ export default function App() {
         player.mountOrLoadYoutubePlayer(videoId, resumeMs);
 
         const subs = await fetchYouTubeSubtitles(videoId);
+        if (seq !== mediaLoadSeqRef.current) return;
         setSubtitles(subs);
         if (subs.length === 0) {
           setSubErrorMsg(
@@ -228,14 +239,17 @@ export default function App() {
 
         saveLastWatched(videoId, resumeMs ?? 0, 'youtube');
       } catch (err: unknown) {
+        if (seq !== mediaLoadSeqRef.current) return;
         const msg =
           err instanceof Error ? err.message : 'YouTube 영상을 불러오는 데 실패했습니다.';
         setSubErrorMsg(msg);
         setSubErrorHintQuery(trimmed.startsWith('http') ? 'TED-Ed english' : trimmed);
         showToast(msg, 'error');
       } finally {
-        setYoutubeLoading(false);
-        setSubLoadingMsg(null);
+        if (seq === mediaLoadSeqRef.current) {
+          setYoutubeLoading(false);
+          setSubLoadingMsg(null);
+        }
       }
     },
     [player, collections, clearDictationLine, showToast],
@@ -289,7 +303,7 @@ export default function App() {
     };
     const handleUp = () => {
       setResizingSidebar(false);
-      saveSidebarWidth(sidebarWidth);
+      saveSidebarWidth(latestSidebarWidthRef.current);
     };
     document.addEventListener('mousemove', handleMove);
     document.addEventListener('mouseup', handleUp);
@@ -297,7 +311,7 @@ export default function App() {
       document.removeEventListener('mousemove', handleMove);
       document.removeEventListener('mouseup', handleUp);
     };
-  }, [resizingSidebar, sidebarWidth]);
+  }, [resizingSidebar]);
 
   // Theater auto-hide floating bar
   const handleTheaterMouseMove = useCallback(
@@ -362,7 +376,9 @@ export default function App() {
   const handleChangeSource = useCallback(
     (mode: SourceMode) => {
       setSourceMode(mode);
-      if (mode === 'local') {
+      if (mode === 'explore') {
+        player.adapterPause();
+      } else if (mode === 'local') {
         if (activeSourceType === 'youtube' || !activeMediaKey) {
           const targetKey = selectedEpKey || episodes[0]?.ep_key || '';
           if (targetKey) {
@@ -485,7 +501,7 @@ export default function App() {
             : 'flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden'
         }
       >
-        {!theaterMode && sourceMode === 'explore' ? (
+        {!theaterMode && sourceMode === 'explore' && (
           <ExploreView
             pendingSearchQuery={pendingExploreQuery}
             onConsumePendingQuery={() => setPendingExploreQuery(null)}
@@ -494,51 +510,56 @@ export default function App() {
             subscriptionsVersion={subscriptionsVersion}
             onToast={showToast}
           />
-        ) : (
-          <>
-            {/* Left Stage Column: Single Unified Hairline Studio Frame */}
+        )}
+
+        <div
+          className={!theaterMode && sourceMode === 'explore' ? 'hidden' : 'contents'}
+          aria-hidden={!theaterMode && sourceMode === 'explore' ? true : undefined}
+        >
+          {/* Left Stage Column: Single Unified Hairline Studio Frame */}
+          <div
+            className={
+              theaterMode
+                ? 'flex-1 min-h-0 flex flex-col'
+                : 'flex-1 min-h-0 flex flex-col p-2.5 sm:p-3.5 lg:p-4'
+            }
+          >
             <div
               className={
                 theaterMode
                   ? 'flex-1 min-h-0 flex flex-col'
-                  : 'flex-1 min-h-0 flex flex-col p-2.5 sm:p-3.5 lg:p-4'
+                  : 'card-surface flex-1 min-h-0 flex flex-col rounded-2xl border border-line bg-surface divide-y divide-line'
               }
             >
-              <div
-                className={
-                  theaterMode
-                    ? 'flex-1 min-h-0 flex flex-col'
-                    : 'card-surface flex-1 min-h-0 flex flex-col rounded-2xl border border-line bg-surface overflow-hidden divide-y divide-line'
-                }
-              >
-                {!theaterMode && (sourceMode === 'local' || sourceMode === 'youtube') && (
-                  <MediaContextBar
-                    sourceMode={sourceMode}
-                    episodes={episodes}
-                    selectedEpKey={selectedEpKey}
-                    completedEpisodes={collections.completedEpisodes}
-                    extractedByEpisode={collections.extractedByEpisode}
-                    onSelectEpisode={(key) => void selectLocalEpisode(key)}
-                    onRefreshEpisodes={() => {
-                      void reloadEpisodes(true).then(() =>
-                        showToast('로컬 미디어 목록을 새로고침했습니다.', 'info'),
-                      );
-                    }}
-                    onSearchOnlineSubtitles={handleSearchOnlineSubtitles}
-                    onToggleEpisodeComplete={(key) => {
-                      const done = collections.handleToggleEpisodeComplete(key);
-                      showToast(
-                        done ? '에피소드를 학습 완료로 표시했습니다.' : '학습 완료 표시를 해제했습니다.',
-                        'info',
-                      );
-                    }}
-                    youtubeUrl={youtubeUrl}
-                    onChangeYoutubeUrl={setYoutubeUrl}
-                    onLoadYoutube={(url) => void loadYoutubeVideo(url)}
-                    youtubeLoading={youtubeLoading}
-                    youtubeHistory={youtubeHistory}
-                  />
-                )}
+              {!theaterMode && (sourceMode === 'local' || sourceMode === 'youtube') && (
+                <MediaContextBar
+                  sourceMode={sourceMode}
+                  episodes={episodes}
+                  selectedEpKey={selectedEpKey}
+                  activeMediaKey={activeMediaKey}
+                  completedEpisodes={collections.completedEpisodes}
+                  extractedByEpisode={collections.extractedByEpisode}
+                  onSelectEpisode={(key) => void selectLocalEpisode(key)}
+                  onRefreshEpisodes={() => {
+                    void reloadEpisodes(true).then(() =>
+                      showToast('로컬 미디어 목록을 새로고침했습니다.', 'info'),
+                    );
+                  }}
+                  onSearchOnlineSubtitles={handleSearchOnlineSubtitles}
+                  onToggleEpisodeComplete={(key) => {
+                    const done = collections.handleToggleEpisodeComplete(key);
+                    showToast(
+                      done ? '에피소드를 학습 완료로 표시했습니다.' : '학습 완료 표시를 해제했습니다.',
+                      'info',
+                    );
+                  }}
+                  youtubeUrl={youtubeUrl}
+                  onChangeYoutubeUrl={setYoutubeUrl}
+                  onLoadYoutube={(url) => void loadYoutubeVideo(url)}
+                  youtubeLoading={youtubeLoading}
+                  youtubeHistory={youtubeHistory}
+                />
+              )}
 
                 <VideoStage
                   adapter={activeSourceType === 'youtube' ? 'youtube' : 'html5'}
@@ -658,8 +679,7 @@ export default function App() {
                 )}
               </Sidebar>
             )}
-          </>
-        )}
+        </div>
       </main>
 
       <DictPopover
