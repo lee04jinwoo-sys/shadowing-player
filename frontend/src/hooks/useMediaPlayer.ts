@@ -34,6 +34,8 @@ export function useMediaPlayer({
   const ytPlayerRef = useRef<YTPlayerInstance | null>(null);
   const pendingYtSeekRef = useRef<number | null>(null);
   const pendingYtVideoIdRef = useRef<string | null>(null);
+  const pendingHtml5SeekCleanupRef = useRef<(() => void) | null>(null);
+  const ytInitTimerRef = useRef<number | null>(null);
   const seekLockUntilRef = useRef<number>(0);
   const hasPausedForShadowingRef = useRef<boolean>(false);
 
@@ -81,7 +83,7 @@ export function useMediaPlayer({
     if (adapterRef.current === 'youtube') {
       ytPlayerRef.current?.playVideo();
     } else {
-      void videoRef.current?.play().catch(() => null);
+      void videoRef.current?.play()?.catch(() => null);
     }
   }, []);
 
@@ -200,6 +202,10 @@ export function useMediaPlayer({
   const destroyYoutubePlayer = useCallback(() => {
     pendingYtVideoIdRef.current = null;
     pendingYtSeekRef.current = null;
+    if (ytInitTimerRef.current !== null) {
+      window.clearTimeout(ytInitTimerRef.current);
+      ytInitTimerRef.current = null;
+    }
     if (ytPlayerRef.current) {
       try {
         ytPlayerRef.current.destroy();
@@ -214,6 +220,8 @@ export function useMediaPlayer({
   }, []);
 
   const clearHtml5Video = useCallback(() => {
+    pendingHtml5SeekCleanupRef.current?.();
+    pendingHtml5SeekCleanupRef.current = null;
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.removeAttribute('src');
@@ -222,41 +230,65 @@ export function useMediaPlayer({
   }, []);
 
   const loadHtml5Video = useCallback((epKey: string, isAvi: boolean, resumeMs?: number) => {
-    if (!videoRef.current) return;
+    pendingHtml5SeekCleanupRef.current?.();
+    pendingHtml5SeekCleanupRef.current = null;
+
+    const vid = videoRef.current;
+    if (!vid) return;
     if (isAvi) {
-      videoRef.current.removeAttribute('src');
-      videoRef.current.load();
+      vid.removeAttribute('src');
+      vid.load();
       return;
     }
-    videoRef.current.src = `/api/video/${encodeURIComponent(epKey)}`;
-    videoRef.current.playbackRate = playbackSpeedRef.current;
+    vid.src = `/api/video/${encodeURIComponent(epKey)}`;
+    vid.playbackRate = playbackSpeedRef.current;
     if (resumeMs && resumeMs > 0) {
-      window.setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.currentTime = resumeMs / 1000;
-          currentTimeMsRef.current = resumeMs;
-          setCurrentTimeMs(resumeMs);
-        }
-      }, 800);
+      const applyResumeSeek = () => {
+        vid.playbackRate = playbackSpeedRef.current;
+        vid.currentTime = resumeMs / 1000;
+        currentTimeMsRef.current = resumeMs;
+        setCurrentTimeMs(resumeMs);
+        pendingHtml5SeekCleanupRef.current = null;
+      };
+      if (vid.readyState >= 1) {
+        applyResumeSeek();
+      } else {
+        vid.addEventListener('loadedmetadata', applyResumeSeek, { once: true });
+        pendingHtml5SeekCleanupRef.current = () => {
+          vid.removeEventListener('loadedmetadata', applyResumeSeek);
+        };
+      }
     }
   }, []);
 
   const mountOrLoadYoutubePlayer = useCallback((videoId: string, resumeMs?: number) => {
+    const MAX_YT_INIT_ATTEMPTS = 50;
     pendingYtVideoIdRef.current = videoId;
     pendingYtSeekRef.current = resumeMs ?? null;
+    if (ytInitTimerRef.current !== null) {
+      window.clearTimeout(ytInitTimerRef.current);
+      ytInitTimerRef.current = null;
+    }
 
     if (ytPlayerRef.current) {
       ytPlayerRef.current.loadVideoById(videoId);
       return;
     }
 
+    let attempts = 0;
     const initWhenReady = () => {
       if (!pendingYtVideoIdRef.current) return;
       const targetId = pendingYtVideoIdRef.current;
       if (!window.YT?.Player || !ytHostRef.current) {
-        window.setTimeout(initWhenReady, 120);
+        attempts += 1;
+        if (attempts >= MAX_YT_INIT_ATTEMPTS) {
+          ytInitTimerRef.current = null;
+          return;
+        }
+        ytInitTimerRef.current = window.setTimeout(initWhenReady, 120);
         return;
       }
+      ytInitTimerRef.current = null;
 
       ytHostRef.current.innerHTML = '<div id="yt-iframe-target" class="w-full h-full"></div>';
       ytPlayerRef.current = new window.YT.Player('yt-iframe-target', {
@@ -406,6 +438,18 @@ export function useMediaPlayer({
     }, 33);
     return () => window.clearInterval(id);
   }, [activeSourceType, handleTimeTick]);
+
+  // Cleanup pending metadata seek listeners and YouTube init timers on unmount
+  useEffect(() => {
+    return () => {
+      pendingHtml5SeekCleanupRef.current?.();
+      pendingHtml5SeekCleanupRef.current = null;
+      if (ytInitTimerRef.current !== null) {
+        window.clearTimeout(ytInitTimerRef.current);
+        ytInitTimerRef.current = null;
+      }
+    };
+  }, []);
 
   return {
     videoRef,

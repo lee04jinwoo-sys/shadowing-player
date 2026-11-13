@@ -33,7 +33,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside
       style={{ '--sidebar-w': `${width}px` } as React.CSSProperties}
-      className="relative flex flex-col bg-surface border-t lg:border-t-0 lg:border-l border-line min-h-[50vh] lg:min-h-0 lg:h-full lg:w-[var(--sidebar-w)] shrink-0 overflow-hidden"
+      className="relative flex flex-col bg-surface border-t lg:border-t-0 lg:border-l border-line h-[52vh] min-h-[340px] lg:h-full lg:min-h-0 lg:w-[var(--sidebar-w)] shrink-0 overflow-hidden"
     >
       {/* Desktop resize handle */}
       <div

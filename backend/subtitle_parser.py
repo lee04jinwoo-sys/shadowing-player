@@ -7,7 +7,6 @@ import pysubs2
 from backend.app_dirs import SUBTITLE_CACHE_DIR
 
 # Setup logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 CACHE_DIR = str(SUBTITLE_CACHE_DIR)

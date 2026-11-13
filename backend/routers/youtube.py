@@ -1,6 +1,8 @@
 """
 YouTube API Router
 """
+import re
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from backend.app_dirs import load_settings
@@ -38,9 +40,15 @@ def get_user_subscriptions():
     }
 
 
+_YT_CHANNEL_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
+_YT_VIDEO_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{11}$")
+
+
 @router.get("/subscriptions/channel/{channel_id}")
 def get_channel_videos(channel_id: str, title: str = "", limit: int = 12):
     """특정 채널의 최신 영상 목록 조회"""
+    if not _YT_CHANNEL_ID_RE.fullmatch(channel_id):
+        raise HTTPException(status_code=400, detail="Invalid YouTube channel ID")
     videos = fetch_channel_recent_videos(channel_id=channel_id, channel_title=title, max_results=limit)
     return {"success": True, "results": videos}
 
@@ -55,5 +63,7 @@ def get_youtube_info(data: YouTubeURLModel):
 
 @router.get("/subtitles/{video_id}")
 def get_youtube_subtitles(video_id: str):
+    if not _YT_VIDEO_ID_RE.fullmatch(video_id):
+        raise HTTPException(status_code=400, detail="Invalid YouTube video ID")
     subs = fetch_youtube_subtitles(video_id)
     return subs

@@ -88,6 +88,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
       const data = event.data as { type?: string } | null;
       if (data?.type === 'GOOGLE_AUTH_SUCCESS') {
         onToast('Google 계정 연동이 완료되었습니다.', 'success');

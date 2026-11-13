@@ -5,6 +5,7 @@ Provides endpoints for reading and writing application settings
 """
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -54,8 +55,8 @@ def update_settings(req: SettingsUpdateRequest) -> dict:
     current = load_settings()
 
     if req.google_api_key is not None:
-        # Don't save the masked version back
-        if not req.google_api_key.endswith("***"):
+        # Don't save masked display values (e.g., "********9876") back over the real key
+        if not _is_masked_api_key(req.google_api_key):
             current["google_api_key"] = req.google_api_key
             # Also update the environment variable for the current session
             os.environ["GOOGLE_API_KEY"] = req.google_api_key
@@ -120,6 +121,12 @@ def get_log_path() -> dict:
         "log_path": str(LOG_FILE_PATH),
         "exists": LOG_FILE_PATH.exists(),
     }
+
+
+def _is_masked_api_key(val: str) -> bool:
+    """Return True if val looks like a masked placeholder emitted by _mask_api_key()."""
+    stripped = val.strip()
+    return bool(stripped) and bool(re.fullmatch(r"\*+.{0,4}", stripped))
 
 
 def _mask_api_key(key: str) -> str:

@@ -190,11 +190,14 @@ export const VideoStage: React.FC<VideoStageProps> = ({
       : null;
 
   return (
-    <div className="relative flex-1 min-h-0 flex flex-col">
+    <div className={theaterMode ? 'relative flex-1 min-h-0 flex flex-col' : 'relative lg:flex-1 lg:min-h-0 flex flex-col'}>
       {/* Cinema Video Viewport */}
       <div
-        className={`relative flex-1 min-h-[240px] bg-stage overflow-hidden flex items-center justify-center ${
-          theaterMode ? 'rounded-none border-none' : ''
+        data-testid="video-viewport"
+        className={`relative bg-stage overflow-hidden flex items-center justify-center ${
+          theaterMode
+            ? 'flex-1 min-h-0 rounded-none border-none'
+            : 'aspect-video lg:aspect-auto lg:flex-1 lg:min-h-[240px]'
         }`}
       >
         <video

@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
+from backend.app_dirs import get_google_api_key
 from backend.anki_core.config import (
     GEMINI_DEFAULT_TEMPERATURE,
     NOTE_COMPLETOR_MAX_WORKERS,
@@ -58,9 +59,9 @@ class NoteCompleter:
     """AI-powered note enrichment using Google Gemini."""
 
     def __init__(self) -> None:
-        api_key = os.environ.get("GOOGLE_API_KEY")
+        api_key = get_google_api_key() or os.environ.get("GOOGLE_API_KEY")
         if not api_key:
-            raise ValueError("GOOGLE_API_KEY environment variable is not set")
+            raise ValueError("GOOGLE_API_KEY is not configured in settings or environment")
         self.client = genai.Client(api_key=api_key)
         self.model_id = NOTE_COMPLETOR_MODEL
         self.sys_instruct = NOTE_COMPLETOR_SYS_INSTRUCT

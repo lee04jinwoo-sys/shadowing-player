@@ -135,7 +135,7 @@ def google_oauth_callback(code: Optional[str] = None, error: Optional[str] = Non
           <p>영어 구독 채널을 성공적으로 불러왔습니다. 창이 곧 닫힙니다...</p>
           <script>
             if (window.opener) {
-              window.opener.postMessage({ type: 'GOOGLE_AUTH_SUCCESS' }, '*');
+              window.opener.postMessage({ type: 'GOOGLE_AUTH_SUCCESS' }, window.location.origin);
               setTimeout(() => window.close(), 1500);
             } else {
               setTimeout(() => { window.location.href = '/'; }, 1500);

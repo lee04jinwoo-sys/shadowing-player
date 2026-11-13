@@ -224,4 +224,68 @@ describe('App UI shell & interactions', () => {
       expect(screen.getByText('에피소드 3 최신')).toBeInTheDocument();
     });
   });
+
+  it('keeps stacked mobile VideoStage/Sidebar height constraints below lg', async () => {
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('쇼에 오신 것을 환영합니다.')).toBeInTheDocument();
+    });
+
+    const stageColumn = screen.getByTestId('stage-column');
+    expect(stageColumn.className).toContain('shrink-0');
+
+    const viewport = screen.getByTestId('video-viewport');
+    expect(viewport.className).toContain('aspect-video');
+
+    const sidebar = document.querySelector('aside');
+    expect(sidebar?.className).toContain('h-[52vh]');
+  });
+
+  it('advances to the next subtitle when pressing Enter on document after dictation grading', async () => {
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('쇼에 오신 것을 환영합니다.')).toBeInTheDocument();
+    });
+
+    // Select cue #1 from listening list, then switch to Dictation (말하기)
+    fireEvent.click(screen.getByText('쇼에 오신 것을 환영합니다.'));
+    fireEvent.click(screen.getByRole('button', { name: /말하기/ }));
+
+    const input = document.getElementById('dictation-input') as HTMLInputElement;
+    expect(input).toBeInTheDocument();
+    expect(screen.getByText('#1')).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: 'Welcome to the show.' } });
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+
+    expect(screen.getByRole('button', { name: /다음 대사 \(Enter\)/ })).toBeInTheDocument();
+
+    // After grading disables the input, pressing Enter on document should advance to #2
+    fireEvent.keyDown(document, { key: 'Enter', code: 'Enter' });
+
+    await waitFor(() => {
+      expect(screen.getByText('#2')).toBeInTheDocument();
+    });
+  });
+
+  it('places DictPopover below modals and closes it when toggling ShortcutsModal (?)', async () => {
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('쇼에 오신 것을 환영합니다.')).toBeInTheDocument();
+    });
+
+    const wordEl = document.querySelector('.word-token');
+    expect(wordEl).not.toBeNull();
+    fireEvent.click(wordEl!);
+
+    const popover = await screen.findByRole('dialog', { name: '단어 사전 팝오버' });
+    expect(popover.className).toContain('z-[8500]');
+
+    fireEvent.keyDown(document, { key: '?', shiftKey: true, code: 'Slash' });
+    expect(screen.getByText('단축키 및 사용법 안내')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: '단어 사전 팝오버' })).not.toBeInTheDocument();
+  });
 });

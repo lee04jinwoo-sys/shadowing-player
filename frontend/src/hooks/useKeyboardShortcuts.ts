@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type { DictPopoverRequest, SourceMode } from '../types';
+import type { DictPopoverRequest, SidebarMode, SourceMode } from '../types';
 
 interface UseKeyboardShortcutsOptions {
   dictRequest: DictPopoverRequest | null;
@@ -7,6 +7,8 @@ interface UseKeyboardShortcutsOptions {
   settingsOpen: boolean;
   theaterMode: boolean;
   sourceMode: SourceMode;
+  sidebarMode: SidebarMode;
+  dictationChecked: boolean;
   activeSubIndexRef: React.MutableRefObject<number>;
   playbackSpeedRef: React.MutableRefObject<number>;
   onCloseDict: () => void;
@@ -18,6 +20,7 @@ interface UseKeyboardShortcutsOptions {
   onTogglePlay: () => void;
   onPrev: () => void;
   onNext: () => void;
+  onAdvanceDictation: () => void;
   onToggleABLoop: () => void;
   onToggleBlur: () => void;
   onToggleStar: (idx: number) => void;
@@ -30,6 +33,8 @@ export function useKeyboardShortcuts({
   settingsOpen,
   theaterMode,
   sourceMode,
+  sidebarMode,
+  dictationChecked,
   activeSubIndexRef,
   playbackSpeedRef,
   onCloseDict,
@@ -41,6 +46,7 @@ export function useKeyboardShortcuts({
   onTogglePlay,
   onPrev,
   onNext,
+  onAdvanceDictation,
   onToggleABLoop,
   onToggleBlur,
   onToggleStar,
@@ -85,6 +91,22 @@ export function useKeyboardShortcuts({
       }
 
       if (isEditable || settingsOpen || shortcutsOpen) return;
+
+      if (
+        e.key === 'Enter' &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        sourceMode !== 'explore' &&
+        sidebarMode === 'dictation' &&
+        dictationChecked &&
+        !(target instanceof HTMLButtonElement) &&
+        !(target instanceof Element && target.closest('button, a, [role="button"], [role="option"], [role="slider"]'))
+      ) {
+        e.preventDefault();
+        onAdvanceDictation();
+        return;
+      }
 
       switch (e.code) {
         case 'Space': {
@@ -173,6 +195,8 @@ export function useKeyboardShortcuts({
     settingsOpen,
     theaterMode,
     sourceMode,
+    sidebarMode,
+    dictationChecked,
     activeSubIndexRef,
     playbackSpeedRef,
     onCloseDict,
@@ -184,6 +208,7 @@ export function useKeyboardShortcuts({
     onTogglePlay,
     onPrev,
     onNext,
+    onAdvanceDictation,
     onToggleABLoop,
     onToggleBlur,
     onToggleStar,

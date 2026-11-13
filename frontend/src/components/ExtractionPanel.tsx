@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BookOpen, Download, Loader2, MessageSquare, Send, Table2, Trash2 } from 'lucide-react';
 import type { ExportItemPayload, ExtractionTab, SavedVocabItem, SubtitleItem } from '../types';
 import { formatTime } from '../utils/subtitles';
@@ -41,6 +41,16 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
   const [exportingKind, setExportingKind] = useState<'apkg' | 'csv' | 'anki' | null>(null);
   const [bulkProgressText, setBulkProgressText] = useState<string | null>(null);
   const [busyCardId, setBusyCardId] = useState<string | null>(null);
+  const bulkTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (bulkTimerRef.current !== null) {
+        window.clearTimeout(bulkTimerRef.current);
+        bulkTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const sortedStarred = Array.from(starredSubtitles).sort((a, b) => a - b);
   const pendingVocab = savedVocab.filter((v) => !v.extracted);
@@ -59,7 +69,7 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
     });
 
   const buildVocabExportItems = (): ExportItemPayload[] =>
-    savedVocab.map((v) => ({
+    pendingVocab.map((v) => ({
       word: v.word,
       meaning: v.meaning,
       pos: v.pos,
@@ -185,7 +195,9 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
 
     setBulkProgressText(`완료 (${succeeded}/${total} 문장 전송)`);
     onToast(`${succeeded}/${total} 문장을 Anki에 저장했습니다.`, succeeded > 0 ? 'success' : 'error');
-    window.setTimeout(() => {
+    if (bulkTimerRef.current !== null) window.clearTimeout(bulkTimerRef.current);
+    bulkTimerRef.current = window.setTimeout(() => {
+      bulkTimerRef.current = null;
       setBulkProgressText(null);
       setExportingKind(null);
     }, 1500);
@@ -231,7 +243,9 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
 
     setBulkProgressText(`완료 (${succeeded}/${total} 단어 전송)`);
     onToast(`${succeeded}/${total} 단어를 Anki에 저장했습니다.`, succeeded > 0 ? 'success' : 'error');
-    window.setTimeout(() => {
+    if (bulkTimerRef.current !== null) window.clearTimeout(bulkTimerRef.current);
+    bulkTimerRef.current = window.setTimeout(() => {
+      bulkTimerRef.current = null;
       setBulkProgressText(null);
       setExportingKind(null);
     }, 1500);

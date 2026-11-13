@@ -83,7 +83,7 @@ class WordLookupRequest(BaseModel):
     word: str
     context: Optional[str] = ""
 
-@router.api_route("/lookup", methods=["POST", "GET", "HEAD"])
+@router.post("/lookup")
 def lookup_word(req: WordLookupRequest):
     raw_word = req.word.strip()
     cleaned_word = re.sub(r"^[^\w\s'-]+|[^\w\s'-]+$", "", raw_word).strip().lower()

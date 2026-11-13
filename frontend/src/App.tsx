@@ -334,16 +334,26 @@ export default function App() {
     }
   }, [theaterMode]);
 
+  const handleAdvanceDictation = useCallback(() => {
+    clearDictationLine();
+    player.handleNextSubtitle();
+  }, [clearDictationLine, player.handleNextSubtitle]);
+
   useKeyboardShortcuts({
     dictRequest,
     shortcutsOpen,
     settingsOpen,
     theaterMode,
     sourceMode,
+    sidebarMode,
+    dictationChecked,
     activeSubIndexRef: player.activeSubIndexRef,
     playbackSpeedRef: player.playbackSpeedRef,
     onCloseDict: () => setDictRequest(null),
-    onToggleShortcuts: () => setShortcutsOpen((prev) => !prev),
+    onToggleShortcuts: () => {
+      setDictRequest(null);
+      setShortcutsOpen((prev) => !prev);
+    },
     onCloseShortcuts: () => setShortcutsOpen(false),
     onCloseSettings: () => setSettingsOpen(false),
     onToggleTheater: () => setTheaterMode((prev) => !prev),
@@ -351,6 +361,7 @@ export default function App() {
     onTogglePlay: player.togglePlay,
     onPrev: player.handlePrevSubtitle,
     onNext: player.handleNextSubtitle,
+    onAdvanceDictation: handleAdvanceDictation,
     onToggleABLoop: () => player.setAbLoopActive((prev) => !prev),
     onToggleBlur: () => setBlurRevealed((prev) => !prev),
     onToggleStar: collections.toggleStarSubtitle,
@@ -484,8 +495,14 @@ export default function App() {
           ankiStatus={ankiStatus}
           ankiChecking={ankiChecking}
           onRecheckAnki={() => void refreshAnki()}
-          onOpenShortcuts={() => setShortcutsOpen(true)}
-          onOpenSettings={() => setSettingsOpen(true)}
+          onOpenShortcuts={() => {
+            setDictRequest(null);
+            setShortcutsOpen(true);
+          }}
+          onOpenSettings={() => {
+            setDictRequest(null);
+            setSettingsOpen(true);
+          }}
           theme={theme}
           onToggleTheme={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
         />
@@ -518,17 +535,18 @@ export default function App() {
         >
           {/* Left Stage Column: Single Unified Hairline Studio Frame */}
           <div
+            data-testid="stage-column"
             className={
               theaterMode
                 ? 'flex-1 min-h-0 flex flex-col'
-                : 'flex-1 min-h-0 flex flex-col p-2.5 sm:p-3.5 lg:p-4'
+                : 'shrink-0 lg:shrink lg:flex-1 lg:min-h-0 flex flex-col p-2.5 sm:p-3.5 lg:p-4'
             }
           >
             <div
               className={
                 theaterMode
                   ? 'flex-1 min-h-0 flex flex-col'
-                  : 'card-surface flex-1 min-h-0 flex flex-col rounded-2xl border border-line bg-surface divide-y divide-line'
+                  : 'card-surface lg:flex-1 lg:min-h-0 flex flex-col rounded-2xl border border-line bg-surface divide-y divide-line'
               }
             >
               {!theaterMode && (sourceMode === 'local' || sourceMode === 'youtube') && (

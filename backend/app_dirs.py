@@ -29,9 +29,16 @@ LOG_FILE_PATH = LOG_DIR / "app.log"
 _PROJECT_VIDEOS_DIR = _PROJECT_ROOT / "videos"
 
 
+def _has_media_files(directory: Path) -> bool:
+    """Return True when directory contains at least one supported video file."""
+    return directory.exists() and (
+        any(directory.glob("*.mp4")) or any(directory.glob("*.avi"))
+    )
+
+
 def get_default_video_dir() -> Path:
     """Return project videos directory if it has media, otherwise ~/Movies/Shadowing Player."""
-    if _PROJECT_VIDEOS_DIR.exists() and any(_PROJECT_VIDEOS_DIR.glob("*.mp4")):
+    if _has_media_files(_PROJECT_VIDEOS_DIR):
         return _PROJECT_VIDEOS_DIR
     return Path.home() / "Movies" / "Shadowing Player"
 
@@ -70,12 +77,23 @@ def load_settings() -> dict[str, Any]:
             # Merge: saved values override defaults, but keep any new default keys
             merged = {**defaults, **saved}
             
-            # Auto-fallback: if saved video_dir doesn't exist or has no mp4 files,
-            # but the project videos folder has files, automatically switch to it!
-            saved_dir = Path(merged.get("video_dir", ""))
-            if (not saved_dir.exists() or not any(saved_dir.glob("*.mp4"))) and _PROJECT_VIDEOS_DIR.exists() and any(_PROJECT_VIDEOS_DIR.glob("*.mp4")):
+            # Auto-fallback only when saved video_dir is unset, missing on disk,
+            # or still the untouched empty default folder while bundled project media exists.
+            raw_dir = str(merged.get("video_dir", "") or "").strip()
+            saved_dir = Path(raw_dir) if raw_dir else None
+            default_movies_dir = Path.home() / "Movies" / "Shadowing Player"
+            is_empty_default = (
+                saved_dir is not None
+                and saved_dir == default_movies_dir
+                and saved_dir.exists()
+                and not any(saved_dir.iterdir())
+            )
+            should_fallback = (
+                (saved_dir is None or not saved_dir.exists() or is_empty_default)
+                and _has_media_files(_PROJECT_VIDEOS_DIR)
+            )
+            if should_fallback:
                 merged["video_dir"] = str(_PROJECT_VIDEOS_DIR)
-                # Persist the update
                 try:
                     with open(SETTINGS_PATH, "w", encoding="utf-8") as fw:
                         json.dump(merged, fw, ensure_ascii=False, indent=2)

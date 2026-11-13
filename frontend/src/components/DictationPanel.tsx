@@ -56,6 +56,8 @@ export const DictationPanel: React.FC<DictationPanelProps> = ({
   onToast,
 }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const aiReqSeqRef = useRef(0);
+  const focusTimerRef = useRef<number | null>(null);
   const [sttListening, setSttListening] = useState(false);
   const [diffResult, setDiffResult] = useState<DiffWordItem[]>([]);
   const [score, setScore] = useState<number | null>(null);
@@ -63,13 +65,34 @@ export const DictationPanel: React.FC<DictationPanelProps> = ({
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
 
   useEffect(() => {
+    return () => {
+      aiReqSeqRef.current += 1;
+      if (focusTimerRef.current !== null) {
+        window.clearTimeout(focusTimerRef.current);
+        focusTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    aiReqSeqRef.current += 1;
     if (!dictationChecked) {
       setDiffResult([]);
       setScore(null);
       setAiExplanation(null);
       setAiLoading(false);
-      window.setTimeout(() => inputRef.current?.focus(), 60);
+      if (focusTimerRef.current !== null) window.clearTimeout(focusTimerRef.current);
+      focusTimerRef.current = window.setTimeout(() => {
+        focusTimerRef.current = null;
+        inputRef.current?.focus();
+      }, 60);
     }
+    return () => {
+      if (focusTimerRef.current !== null) {
+        window.clearTimeout(focusTimerRef.current);
+        focusTimerRef.current = null;
+      }
+    };
   }, [activeSubIndex, dictationChecked]);
 
   const runGrade = (typedRaw: string) => {
@@ -135,19 +158,24 @@ export const DictationPanel: React.FC<DictationPanelProps> = ({
 
   const handleAIExplain = async () => {
     if (!activeSubtitle?.text_en || aiLoading) return;
+    const reqSeq = ++aiReqSeqRef.current;
     setAiLoading(true);
     setAiExplanation('AI가 문장을 분석하고 있습니다...');
     try {
       const res = await getAIExplanation(activeSubtitle.text_en);
+      if (reqSeq !== aiReqSeqRef.current) return;
       if (res.success && res.explanation) {
         setAiExplanation(res.explanation);
       } else {
         setAiExplanation(res.error || 'AI 응답을 가져오는 데 실패했습니다.');
       }
     } catch {
+      if (reqSeq !== aiReqSeqRef.current) return;
       setAiExplanation('AI 응답을 가져오는 데 실패했습니다.');
     } finally {
-      setAiLoading(false);
+      if (reqSeq === aiReqSeqRef.current) {
+        setAiLoading(false);
+      }
     }
   };
 
@@ -276,7 +304,11 @@ export const DictationPanel: React.FC<DictationPanelProps> = ({
               type="button"
               onClick={() => {
                 onCheckedChange(false);
-                window.setTimeout(() => inputRef.current?.focus(), 40);
+                if (focusTimerRef.current !== null) window.clearTimeout(focusTimerRef.current);
+                focusTimerRef.current = window.setTimeout(() => {
+                  focusTimerRef.current = null;
+                  inputRef.current?.focus();
+                }, 40);
               }}
               className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-surface-2/70 hover:bg-surface-3 text-[11px] font-medium text-ink-2 hover:text-ink cursor-pointer"
             >

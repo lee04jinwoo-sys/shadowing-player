@@ -345,7 +345,7 @@ export const DictPopover: React.FC<DictPopoverProps> = ({
       role="dialog"
       aria-label="단어 사전 팝오버"
       style={{ left: `${coords.left}px`, top: `${coords.top}px` }}
-      className="fixed z-[9500] w-[344px] max-w-[calc(100vw-24px)] rounded-2xl bg-surface border border-line-strong shadow-2xl overflow-hidden text-ink"
+      className="fixed z-[8500] w-[344px] max-w-[calc(100vw-24px)] rounded-2xl bg-surface border border-line-strong shadow-2xl overflow-hidden text-ink"
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2 px-3.5 pt-3 pb-2.5 border-b border-line bg-surface-2/60">

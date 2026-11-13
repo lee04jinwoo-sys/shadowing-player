@@ -80,3 +80,23 @@
 - **TDD Red->Green & 검증 현황**:
   - 신규/확장 테스트(`tests/test_ai_settings.py`, `frontend/src/utils/__tests__/api.test.ts`, `App.test.tsx` 왕복·레이스 케이스, `MediaContextBar.test.tsx` 키보드·활성 항목 케이스) 모두 선실패(Red) 확인 후 구현 완료.
   - 최종 검증: Vitest `10`파일 `26`개 테스트 통과, `tsc -b && vite build` 통과, `pytest -q` `36`개 테스트 통과.
+
+## 9. 모바일 레이아웃·설정·내보내기·받아쓰기 키보드·플레이어 타이머 정비 (6차 패스)
+- **모바일/태블릿(`< 1024px`) 세로 스택 VideoStage 붕괴 수정 (`App.tsx`, `VideoStage.tsx`, `Sidebar.tsx`)**:
+  - 원인: 세로 플렉스 컬럼에서 `<aside>`(`Sidebar`)가 `min-h-[50vh]`만 두고 높이 상한 없이 `shrink-0`로 확장되면서, 긴 `ListeningPanel` 자막 목록(예: 457행)이 사이드바 높이를 키워 위쪽 `flex-1 min-h-0` 스테이지 컬럼을 압축.
+  - 수정: 비극장 모드 스테이지 컬럼에 `shrink-0 lg:shrink lg:flex-1 lg:min-h-0`(`data-testid="stage-column"`)을 두고 `VideoStage` 뷰포트(`data-testid="video-viewport"`)에 `aspect-video lg:aspect-auto`를 적용하며, `Sidebar`에 `h-[52vh] min-h-[340px] lg:h-full lg:min-h-0`을 부여해 자막 목록이 `<aside>` 내부에서 스크롤되도록 고정.
+- **설정 및 API 키 영속성 보강 (`backend/app_dirs.py`, `backend/anki_core/completer.py`, `backend/routers/settings.py`)**:
+  - `load_settings()`: 사용자가 지정한 기존 `video_dir`(예: `.avi` 전용/사용자 폴더)에 `.mp4`가 없다는 이유로 프로젝트 `videos/`로 덮어쓰지 않도록 제한(미설정·경로 부재·비어 있는 기본 `~/Movies/Shadowing Player` 폴더일 때만 폴백).
+  - `update_settings()`: `_mask_api_key()`가 반환한 앞부분 마스킹 값(`****...`)을 `.endswith("***")` 오검출 대신 `_is_masked_api_key()` 정규식으로 걸러 실제 API 키 덮어쓰기를 방지.
+  - `NoteCompleter.__init__()`: `os.environ.get("GOOGLE_API_KEY")` 직접 참조를 `get_google_api_key() or os.environ.get("GOOGLE_API_KEY")`로 전환해 `.apkg` AI 보강이 `cache/settings.json` 키를 서버 재시작 없이 즉시 사용하도록 수정.
+- **받아쓰기 키보드 흐름·AI 레이스 가드·모달 레이어링 (`App.tsx`, `useKeyboardShortcuts.ts`, `DictationPanel.tsx`, `DictPopover.tsx`)**:
+  - `말하기` 탭에서 채점 완료 후 `#dictation-input`이 비활성화되어 포커스가 문서로 빠져도 `Enter` 키로 다음 대사(`onAdvanceDictation`)로 진행할 수 있도록 전역 단축키 핸들러 보강(버튼/링크/슬라이더 등 대화형 요소 포커스 및 `document` 대상 안전 가드 포함).
+  - `DictationPanel`: `aiReqSeqRef` 시퀀스 가드와 `focusTimerRef` 언마운트 정리를 추가해 빠른 대사 전환 시 이전 문장 AI 응답이 새 문장에 덮어써지지 않도록 차단.
+  - `DictPopover`: `z-[9500]` -> `z-[8500]`으로 내려 `SettingsModal`/`ShortcutsModal`(`z-[9000]`) 아래 배치하고, `?` 단축키 또는 헤더 모달 버튼 열기 시 열린 사전 팝오버를 닫도록 일관화.
+- **내보내기 범위 일치·플레이어 이벤트/폴링·보안 정비 (`ExtractionPanel.tsx`, `useMediaPlayer.ts`, `dict.py`, `youtube.py`, `auth.py`, `SettingsModal.tsx`, `subtitle_parser.py`)**:
+  - `ExtractionPanel`: `buildVocabExportItems()`가 전체 `savedVocab` 대신 미추출 대기열 `pendingVocab`만 내보내 `단어/표현 (N)` 배지 및 `.apkg`/`.csv` 내보내기를 일치시키고 `bulkTimerRef` 언마운트 정리 추가.
+  - `useMediaPlayer`: HTML5 재개 시점 탐색을 임의 `800ms` 타이머 대신 취소 가능한 `loadedmetadata` 리스너(배속 재적용 포함)로 교체, `video.play()?.catch` null 가드, YouTube IFrame API 폴링 상한(`MAX_YT_INIT_ATTEMPTS = 50`) 및 언마운트 타이머 정리 추가.
+  - `dict.py` `/api/dict/lookup`을 `@router.post`로 제한, `youtube.py` `video_id`/`channel_id` 포맷 검증(`400`), `auth.py` OAuth callback `postMessage` 및 `SettingsModal` 수신 origin을 `window.location.origin`으로 제한, `subtitle_parser.py` 모듈 레벨 `logging.basicConfig` 제거.
+- **TDD Red->Green & 검증 현황**:
+  - 신규/확장 테스트(`tests/test_settings_and_security.py`, `ExtractionPanel.test.tsx`, `useMediaPlayer.test.ts`, `SettingsModal.test.tsx`, `DictationPanel.test.tsx` 레이스 케이스, `App.test.tsx` 모바일/Enter/모달 케이스) 모두 선실패(Red) 확인 후 구현 완료.
+  - 최종 검증: Vitest `13`파일 `34`개 테스트 통과, `npx tsc --noEmit` 및 `tsc -b && vite build` 통과, `pytest` `42`개 테스트 통과.
