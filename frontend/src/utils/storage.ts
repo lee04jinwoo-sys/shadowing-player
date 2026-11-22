@@ -186,9 +186,14 @@ export function deleteSavedVocabItem(id: string): SavedVocabItem[] {
 export function getSavedTheme(): ThemeMode {
   try {
     const val = localStorage.getItem(KEYS.theme);
-    return val === 'light' ? 'light' : 'dark';
+    if (val === 'light' || val === 'dark') return val;
   } catch {
-    return 'dark';
+    // fall through to the OS preference
+  }
+  try {
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  } catch {
+    return 'light';
   }
 }
 

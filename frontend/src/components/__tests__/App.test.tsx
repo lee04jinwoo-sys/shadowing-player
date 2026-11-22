@@ -53,6 +53,8 @@ describe('App UI shell & interactions', () => {
   });
 
   it('renders 3-way source navigation, Anki status, sidebar tabs, and theme toggle', async () => {
+    // 기본 테마는 OS 설정을 따르므로, 토글 동작만 보도록 저장값을 고정한다.
+    localStorage.setItem('shadowing_theme', 'dark');
     render(<App />);
 
     expect(screen.getByRole('button', { name: /로컬/ })).toBeInTheDocument();

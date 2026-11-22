@@ -2,50 +2,52 @@
 
 :root {
   color-scheme: dark;
-  --canvas: #0a0d14;
-  --surface: #0f131c;
-  --surface-2: #161b26;
-  --surface-3: #1d2331;
-  --stage: #07090f;
-  --line: rgba(255, 255, 255, 0.08);
-  --line-strong: rgba(255, 255, 255, 0.15);
-  --ink: #eef1f6;
-  --ink-2: #a7b0c0;
-  --ink-3: #6b7486;
+  --canvas: #191919;
+  --surface: #202020;
+  --surface-2: #252525;
+  --surface-3: #2d2d2d;
+  --stage: #141414;
+  --line: #333333;
+  --line-strong: #444444;
+  --ink: #e6e6e6;
+  --ink-2: #9b9a97;
+  --ink-3: #6b6a67;
 
-  --accent: #8b93ff;
-  --accent-hover: #757ef5;
-  --accent-ink: #0a0d14;
-  --good: #34d399;
+  /* Accent = ink. 강조는 브랜드 색이 아니라 앰버 하이라이트(--warn)가 맡는다. */
+  --accent: #e6e6e6;
+  --accent-hover: #ffffff;
+  --accent-ink: #191919;
+  --good: #6ccf9c;
   --warn: #fbbf24;
-  --danger: #fb7185;
+  --danger: #f08a85;
   --info: #38bdf8;
 }
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --canvas: #f8fafc;
+  --canvas: #fcfbf9;
   --surface: #ffffff;
-  --surface-2: #f1f5f9;
-  --surface-3: #e2e8f0;
-  --stage: #0c101a;
-  --line: #e2e8f0;
-  --line-strong: #cbd5e1;
-  --ink: #0f172a;
-  --ink-2: #475569;
-  --ink-3: #64748b;
+  --surface-2: #f7f6f3;
+  --surface-3: #f1f0ec;
+  --stage: #141414;
+  --line: #e9e8e4;
+  --line-strong: #d6d4cc;
+  --ink: #37352f;
+  --ink-2: #787774;
+  --ink-3: #a8a7a1;
 
-  --accent: #5b63e6;
-  --accent-hover: #4b53d1;
+  --accent: #37352f;
+  --accent-hover: #1f1e1b;
   --accent-ink: #ffffff;
-  --good: #059669;
-  --warn: #d97706;
-  --danger: #e11d48;
+  --good: #2f8f5b;
+  --warn: #b9770e;
+  --danger: #d44c47;
   --info: #0284c7;
 }
 
 @theme inline {
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-serif: "Lora", Georgia, "Noto Serif KR", serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   --color-canvas: var(--canvas);
@@ -217,7 +219,7 @@ input[type="range"].studio-slider::-webkit-slider-thumb:hover {
 }
 
 :root[data-theme="light"] .card-surface {
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 2px rgba(15, 15, 15, 0.06), 0 1px 1px rgba(15, 15, 15, 0.04);
 }
 
 /* Loading skeleton shimmer */

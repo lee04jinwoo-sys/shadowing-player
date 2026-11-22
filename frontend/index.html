@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="dark light" />
     <script>
       (function () {
-        var t = 'dark';
+        var t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         try {
           var saved = localStorage.getItem('shadowing_theme');
           if (saved === 'light' || saved === 'dark') {
@@ -23,7 +23,7 @@
     />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap"
     />
     <link
       rel="icon"

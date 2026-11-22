@@ -79,7 +79,7 @@ export const Header: React.FC<HeaderProps> = ({
             <Captions className="w-4 h-4" />
           </div>
           <div className="flex items-center gap-2 min-w-0">
-            <h1 className="text-sm font-bold tracking-tight text-ink whitespace-nowrap">
+            <h1 className="font-serif text-[15px] font-semibold tracking-tight text-ink whitespace-nowrap">
               Shadowing Player
             </h1>
             {activeTitle && (
