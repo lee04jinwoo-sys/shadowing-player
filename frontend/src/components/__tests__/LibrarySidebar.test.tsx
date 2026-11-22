@@ -103,27 +103,31 @@ describe('LibrarySidebar', () => {
     expect(onLoadYoutube).toHaveBeenCalledWith('https://www.youtube.com/watch?v=abc123');
   });
 
-  it('collapses to a thin rail and expands again, remembering the choice', () => {
-    const { unmount } = render(<LibrarySidebar {...baseProps} sourceMode="local" />);
-    expect(screen.getByPlaceholderText('에피소드 검색...')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: '에피소드 목록 접기' }));
-    expect(screen.queryByPlaceholderText('에피소드 검색...')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /S01E01/ })).not.toBeInTheDocument();
-    expect(screen.getByTestId('library-sidebar').className).toContain('lg:w-12');
-
-    unmount();
+  it('is a hover-reveal drawer: content stays mounted, slides over the stage on lg, and has no toggle button', () => {
     render(<LibrarySidebar {...baseProps} sourceMode="local" />);
-    expect(screen.queryByPlaceholderText('에피소드 검색...')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '에피소드 목록 펼치기' }));
+    // 목록은 항상 렌더링되어 있고(접힘 상태로 언마운트되지 않음), 접기/펼치기 버튼은 없다.
+    expect(screen.getByPlaceholderText('에피소드 검색...')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /S01E01/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /목록 (접기|펼치기)/ })).not.toBeInTheDocument();
+
+    const panel = screen.getByTestId('library-sidebar');
+    const wrapper = panel.parentElement as HTMLElement;
+    // 호버/포커스 영역은 래퍼, 패널은 lg에서 오버레이로 슬라이드한다.
+    expect(wrapper.className).toContain('group');
+    expect(wrapper.className).toContain('lg:w-3');
+    expect(panel.className).toContain('lg:absolute');
+    expect(panel.className).toContain('lg:-translate-x-full');
+    expect(panel.className).toContain('lg:group-hover:translate-x-0');
+    expect(panel.className).toContain('lg:group-focus-within:translate-x-0');
+    expect(panel.className).toContain('motion-reduce:transition-none');
   });
 
-  it('can collapse the YouTube panel too', () => {
+  it('works the same way in YouTube mode', () => {
     render(<LibrarySidebar {...baseProps} sourceMode="youtube" />);
-    fireEvent.click(screen.getByRole('button', { name: '에피소드 목록 접기' }));
-    expect(screen.queryByPlaceholderText(/URL 또는 Video ID/)).not.toBeInTheDocument();
+    const panel = screen.getByTestId('library-sidebar');
+    expect(screen.getByPlaceholderText(/URL 또는 Video ID/)).toBeInTheDocument();
+    expect(panel.className).toContain('lg:group-hover:translate-x-0');
   });
 
   it('keeps episode and video titles in the UI sans font, not the serif display font', () => {
