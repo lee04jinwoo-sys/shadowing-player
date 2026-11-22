@@ -9,7 +9,7 @@
         var t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         try {
           var saved = localStorage.getItem('shadowing_theme');
-          if (saved === 'light' || saved === 'dark') {
+          if (localStorage.getItem('shadowing_theme_rev') === 'paper-1' && (saved === 'light' || saved === 'dark')) {
             t = saved;
           }
         } catch (e) {}

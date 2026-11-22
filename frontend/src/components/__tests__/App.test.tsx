@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import App from '../../App';
+import { saveTheme } from '../../utils/storage';
 
 describe('App UI shell & interactions', () => {
   beforeEach(() => {
@@ -54,7 +55,7 @@ describe('App UI shell & interactions', () => {
 
   it('renders 3-way source navigation, Anki status, sidebar tabs, and theme toggle', async () => {
     // 기본 테마는 OS 설정을 따르므로, 토글 동작만 보도록 저장값을 고정한다.
-    localStorage.setItem('shadowing_theme', 'dark');
+    saveTheme('dark');
     render(<App />);
 
     expect(screen.getByRole('button', { name: /로컬/ })).toBeInTheDocument();

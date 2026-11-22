@@ -10,6 +10,7 @@ const KEYS = {
   lastWatched: 'shadowing_last_watched',
   savedVocab: 'shadowing_saved_vocab',
   theme: 'shadowing_theme',
+  themeRev: 'shadowing_theme_rev',
   sidebarWidth: 'shadowing_sidebar_width',
 } as const;
 
@@ -183,10 +184,13 @@ export function deleteSavedVocabItem(id: string): SavedVocabItem[] {
   return list;
 }
 
+// 종이 팔레트 개편 이전에 저장된 테마(기본 다크)는 한 번 무시해서 새 디자인으로 시작한다.
+const THEME_REV = 'paper-1';
+
 export function getSavedTheme(): ThemeMode {
   try {
     const val = localStorage.getItem(KEYS.theme);
-    if (val === 'light' || val === 'dark') return val;
+    if (localStorage.getItem(KEYS.themeRev) === THEME_REV && (val === 'light' || val === 'dark')) return val;
   } catch {
     // fall through to the OS preference
   }
@@ -200,6 +204,7 @@ export function getSavedTheme(): ThemeMode {
 export function saveTheme(theme: ThemeMode): void {
   try {
     localStorage.setItem(KEYS.theme, theme);
+    localStorage.setItem(KEYS.themeRev, THEME_REV);
   } catch {
     // ignore
   }
