@@ -11,6 +11,7 @@ const KEYS = {
   savedVocab: 'shadowing_saved_vocab',
   theme: 'shadowing_theme',
   themeRev: 'shadowing_theme_rev',
+  libraryCollapsed: 'shadowing_library_collapsed',
   sidebarWidth: 'shadowing_sidebar_width',
 } as const;
 
@@ -226,6 +227,22 @@ export function getSavedSidebarWidth(defaultWidth = 400): number {
 export function saveSidebarWidth(width: number): void {
   try {
     localStorage.setItem(KEYS.sidebarWidth, String(Math.round(width)));
+  } catch {
+    // ignore
+  }
+}
+
+export function getSavedLibraryCollapsed(): boolean {
+  try {
+    return localStorage.getItem(KEYS.libraryCollapsed) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function saveLibraryCollapsed(collapsed: boolean): void {
+  try {
+    localStorage.setItem(KEYS.libraryCollapsed, collapsed ? '1' : '0');
   } catch {
     // ignore
   }

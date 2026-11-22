@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { Check, Loader2, Play, RefreshCw, Search } from 'lucide-react';
+import { Check, Loader2, PanelLeftClose, PanelLeftOpen, Play, RefreshCw, Search } from 'lucide-react';
 import type { Episode, SourceMode, YouTubeHistoryItem } from '../types';
+import { getSavedLibraryCollapsed, saveLibraryCollapsed } from '../utils/storage';
 
 interface LibrarySidebarProps {
   sourceMode: Exclude<SourceMode, 'explore'>;
@@ -42,6 +43,26 @@ export const LibrarySidebar: React.FC<LibrarySidebarProps> = ({
   youtubeHistory,
 }) => {
   const [query, setQuery] = useState('');
+  const [collapsed, setCollapsed] = useState<boolean>(() => getSavedLibraryCollapsed());
+
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      saveLibraryCollapsed(!prev);
+      return !prev;
+    });
+  };
+
+  const collapseButton = (
+    <button
+      type="button"
+      onClick={toggleCollapsed}
+      aria-label="에피소드 목록 접기"
+      title="목록 접기"
+      className="grid h-6 w-6 place-items-center rounded-md text-ink-3 hover:text-ink hover:bg-surface-3 transition-colors cursor-pointer"
+    >
+      <PanelLeftClose className="w-3.5 h-3.5" />
+    </button>
+  );
 
   const filteredEpisodes = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -57,6 +78,26 @@ export const LibrarySidebar: React.FC<LibrarySidebarProps> = ({
     onLoadYoutube(url);
   };
 
+  if (collapsed) {
+    return (
+      <aside
+        aria-label="미디어 라이브러리"
+        data-testid="library-sidebar"
+        className="shrink-0 flex items-center lg:items-start justify-start bg-rail border-b lg:border-b-0 lg:border-r border-line lg:h-full lg:w-12 px-3 py-2 lg:px-0 lg:py-3 lg:justify-center select-none"
+      >
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          aria-label="에피소드 목록 펼치기"
+          title="목록 펼치기"
+          className="grid h-8 w-8 place-items-center rounded-md text-ink-3 hover:text-ink hover:bg-surface-3 transition-colors cursor-pointer"
+        >
+          <PanelLeftOpen className="w-4 h-4" />
+        </button>
+      </aside>
+    );
+  }
+
   return (
     <aside
       aria-label="미디어 라이브러리"
@@ -68,15 +109,18 @@ export const LibrarySidebar: React.FC<LibrarySidebarProps> = ({
           <div className="p-3 border-b border-line space-y-2 shrink-0">
             <div className="flex items-center justify-between px-1 text-xs font-medium text-ink-3">
               <span className="num">에피소드 목록 ({episodes.length})</span>
-              <button
-                type="button"
-                onClick={onRefreshEpisodes}
-                aria-label="에피소드 목록 새로고침"
-                title="로컬 폴더 다시 스캔"
-                className="grid h-6 w-6 place-items-center rounded-md text-ink-3 hover:text-ink hover:bg-surface-3 transition-colors cursor-pointer"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-              </button>
+              <span className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={onRefreshEpisodes}
+                  aria-label="에피소드 목록 새로고침"
+                  title="로컬 폴더 다시 스캔"
+                  className="grid h-6 w-6 place-items-center rounded-md text-ink-3 hover:text-ink hover:bg-surface-3 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+                {collapseButton}
+              </span>
             </div>
             <div className="relative">
               <Search className="w-3.5 h-3.5 text-ink-3 absolute left-2.5 top-2.5" />
@@ -129,7 +173,7 @@ export const LibrarySidebar: React.FC<LibrarySidebarProps> = ({
                         </span>
                       )}
                     </span>
-                    <span className="mt-1 block font-serif text-xs font-medium text-ink line-clamp-2">
+                    <span className="mt-1 block text-xs font-medium text-ink line-clamp-2">
                       {ep.video_filename}
                     </span>
                   </button>
@@ -141,7 +185,10 @@ export const LibrarySidebar: React.FC<LibrarySidebarProps> = ({
       ) : (
         <>
           <div className="p-3 border-b border-line space-y-2 shrink-0">
-            <div className="px-1 text-xs font-medium text-ink-3">YouTube 링크</div>
+            <div className="flex items-center justify-between px-1 text-xs font-medium text-ink-3">
+              <span>YouTube 링크</span>
+              {collapseButton}
+            </div>
             <input
               type="text"
               value={youtubeUrl}
@@ -189,7 +236,7 @@ export const LibrarySidebar: React.FC<LibrarySidebarProps> = ({
                     onClick={() => loadHistoryItem(item.id)}
                     className={cardClass(selected)}
                   >
-                    <span className="block font-serif text-xs font-medium text-ink line-clamp-2">
+                    <span className="block text-xs font-medium text-ink line-clamp-2">
                       {item.title}
                     </span>
                   </button>

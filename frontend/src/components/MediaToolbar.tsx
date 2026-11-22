@@ -47,7 +47,7 @@ export const MediaToolbar: React.FC<MediaToolbarProps> = ({
     <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-line shrink-0">
       <h2
         title={title}
-        className="font-serif text-[15px] font-semibold text-ink truncate min-w-0 flex-1"
+        className="text-[15px] font-semibold text-ink truncate min-w-0 flex-1"
       >
         {title || '영상을 선택하세요'}
       </h2>

@@ -14,7 +14,9 @@ describe('MediaToolbar', () => {
         onToggleComplete={vi.fn()}
       />,
     );
-    expect(screen.getByRole('heading', { name: 'Modern.Family.S01E01.mp4' })).toBeInTheDocument();
+    const heading = screen.getByRole('heading', { name: 'Modern.Family.S01E01.mp4' });
+    expect(heading).toBeInTheDocument();
+    expect(heading.className).not.toContain('font-serif');
     fireEvent.click(screen.getByRole('button', { name: /온라인 자막 검색/ }));
     expect(onSearch).toHaveBeenCalledWith('s01e01');
     await waitFor(() => expect(screen.getByRole('button', { name: /자막 완료/ })).toBeInTheDocument());

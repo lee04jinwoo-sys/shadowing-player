@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { LibrarySidebar } from '../LibrarySidebar';
 import type { Episode } from '../../types';
@@ -25,6 +25,10 @@ const baseProps = {
 };
 
 describe('LibrarySidebar', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it('lists local episodes with a count, marks the selected one, and selects on click', () => {
     const onSelectEpisode = vi.fn();
     render(
@@ -97,5 +101,39 @@ describe('LibrarySidebar', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '불러오기' }));
     expect(onLoadYoutube).toHaveBeenCalledWith('https://www.youtube.com/watch?v=abc123');
+  });
+
+  it('collapses to a thin rail and expands again, remembering the choice', () => {
+    const { unmount } = render(<LibrarySidebar {...baseProps} sourceMode="local" />);
+    expect(screen.getByPlaceholderText('에피소드 검색...')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '에피소드 목록 접기' }));
+    expect(screen.queryByPlaceholderText('에피소드 검색...')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /S01E01/ })).not.toBeInTheDocument();
+    expect(screen.getByTestId('library-sidebar').className).toContain('lg:w-12');
+
+    unmount();
+    render(<LibrarySidebar {...baseProps} sourceMode="local" />);
+    expect(screen.queryByPlaceholderText('에피소드 검색...')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '에피소드 목록 펼치기' }));
+    expect(screen.getByRole('button', { name: /S01E01/ })).toBeInTheDocument();
+  });
+
+  it('can collapse the YouTube panel too', () => {
+    render(<LibrarySidebar {...baseProps} sourceMode="youtube" />);
+    fireEvent.click(screen.getByRole('button', { name: '에피소드 목록 접기' }));
+    expect(screen.queryByPlaceholderText(/URL 또는 Video ID/)).not.toBeInTheDocument();
+  });
+
+  it('keeps episode and video titles in the UI sans font, not the serif display font', () => {
+    render(
+      <LibrarySidebar
+        {...baseProps}
+        sourceMode="local"
+      />,
+    );
+    const title = screen.getByText('Modern.Family.S01E01.mp4');
+    expect(title.className).not.toContain('font-serif');
   });
 });
