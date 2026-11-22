@@ -54,7 +54,6 @@ const ANKI_STATUS_INFO: Record<string, { label: string; title: string }> = {
 export const Header: React.FC<HeaderProps> = ({
   sourceMode,
   onChangeSource,
-  activeTitle,
   ankiStatus,
   ankiChecking,
   onRecheckAnki,
