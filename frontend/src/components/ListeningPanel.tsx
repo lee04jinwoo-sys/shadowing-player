@@ -107,7 +107,7 @@ export const ListeningPanel: React.FC<ListeningPanelProps> = ({
       {/* Subtitle list */}
       <div
         ref={listRef}
-        className={`flex-1 overflow-y-auto divide-y divide-line/60 ${
+        className={`flex-1 overflow-y-auto p-2.5 space-y-1.5 ${
           !blurRevealed ? 'listening-blurred' : ''
         }`}
       >
@@ -169,12 +169,12 @@ export const ListeningPanel: React.FC<ListeningPanelProps> = ({
             const isStarred = starredSubtitles.has(idx);
 
             const leftAccentClass = isActive
-              ? 'border-l-[3px] border-l-accent bg-accent/[0.08]'
+              ? 'border-line-strong bg-surface-3/80 border-l-[3px] border-l-accent card-surface'
               : isExtracted
-                ? 'border-l-[3px] border-l-good hover:bg-surface-2/50'
+                ? 'border-transparent border-l-[3px] border-l-good hover:bg-surface-3/60'
                 : isStarred
-                  ? 'border-l-[3px] border-l-warn hover:bg-surface-2/50'
-                  : 'border-l-[3px] border-l-transparent hover:bg-surface-2/50';
+                  ? 'border-transparent border-l-[3px] border-l-warn hover:bg-surface-3/60'
+                  : 'border-transparent border-l-[3px] border-l-transparent hover:bg-surface-3/60';
 
             return (
               <div
@@ -196,7 +196,7 @@ export const ListeningPanel: React.FC<ListeningPanelProps> = ({
                   if ((e.target as HTMLElement).closest('.word-token')) return;
                   onSeekToSubtitle(idx);
                 }}
-                className={`subtitle-row group relative grid grid-cols-[52px_1fr] gap-2.5 px-3 py-2.5 transition-colors cursor-pointer ${leftAccentClass}`}
+                className={`subtitle-row group relative grid grid-cols-[48px_1fr] gap-2.5 px-3 py-2.5 rounded-lg border transition-colors cursor-pointer ${leftAccentClass}`}
               >
                 <div className="pt-0.5 flex flex-col items-start gap-1">
                   <span
@@ -219,7 +219,7 @@ export const ListeningPanel: React.FC<ListeningPanelProps> = ({
                 </div>
 
                 <div className="min-w-0 pr-12">
-                  <div className="sub-text-en text-[14px] font-medium leading-snug text-ink">
+                  <div className="sub-text-en font-serif text-[15px] leading-relaxed text-ink">
                     <WordTokens
                       text={sub.text_en}
                       contextSentence={sub.text_en}
