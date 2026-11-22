@@ -284,14 +284,14 @@ export async function showWordDictionary(word, context, targetElement, customRec
     ankiBtn.disabled = false;
     if (existingSaved && existingSaved.extracted) {
       ankiBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px; color: var(--success);">check_circle</span> <span id="dict-btn-text">Anki 저장됨</span>';
-      ankiBtn.style.backgroundColor = "rgba(52, 211, 153, 0.15)";
-      ankiBtn.style.color = "#34d399";
-      ankiBtn.style.borderColor = "rgba(52, 211, 153, 0.4)";
+      ankiBtn.style.backgroundColor = "var(--success-dim)";
+      ankiBtn.style.color = "var(--success)";
+      ankiBtn.style.borderColor = "var(--success-dim)";
     } else if (existingSaved) {
-      ankiBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px; color: #fbbf24;">star</span> <span id="dict-btn-text">보관됨 (A)</span>';
-      ankiBtn.style.backgroundColor = "rgba(251, 191, 36, 0.15)";
-      ankiBtn.style.color = "#fbbf24";
-      ankiBtn.style.borderColor = "rgba(251, 191, 36, 0.4)";
+      ankiBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px; color: var(--warning);">star</span> <span id="dict-btn-text">보관됨 (A)</span>';
+      ankiBtn.style.backgroundColor = "var(--warning-dim)";
+      ankiBtn.style.color = "var(--warning)";
+      ankiBtn.style.borderColor = "var(--warning-dim)";
     } else {
       ankiBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px;">star</span> <span id="dict-btn-text">보관 (A)</span>';
       ankiBtn.style.backgroundColor = "";
@@ -545,12 +545,12 @@ function showDictToast(msg) {
       bottom: 24px;
       left: 50%;
       transform: translateX(-50%);
-      background: #1e1b4b;
-      color: #fff;
+      background: var(--text-primary);
+      color: var(--bg-base);
       padding: 10px 18px;
       border-radius: 8px;
-      border: 1px solid #6366f1;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      border: none;
+      box-shadow: var(--shadow-lg);
       font-size: 13px;
       font-weight: 500;
       z-index: 99999;

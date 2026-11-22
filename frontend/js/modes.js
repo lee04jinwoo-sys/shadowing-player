@@ -275,8 +275,8 @@ export function bindModeEvents() {
 
       if (getSTTListeningState()) {
         stopSTT();
-        sttMicBtn.style.background = "rgba(239, 68, 68, 0.1)";
-        sttMicBtn.style.color = "#f87171";
+        sttMicBtn.style.background = "var(--danger-dim)";
+        sttMicBtn.style.color = "var(--danger)";
         if (sttMicLabel) sttMicLabel.textContent = "음성 채점";
         return;
       }
@@ -284,8 +284,8 @@ export function bindModeEvents() {
       // Pause video when recording voice
       import('./player.js').then(m => m.pause());
 
-      sttMicBtn.style.background = "rgba(239, 68, 68, 0.3)";
-      sttMicBtn.style.color = "#ffffff";
+      sttMicBtn.style.background = "var(--danger-dim)";
+      sttMicBtn.style.color = "var(--text-primary)";
       if (sttMicLabel) sttMicLabel.textContent = "듣는 중...";
 
       startSTT(
@@ -294,20 +294,20 @@ export function bindModeEvents() {
         },
         (finalText) => {
           dictationInput.value = finalText;
-          sttMicBtn.style.background = "rgba(239, 68, 68, 0.1)";
-          sttMicBtn.style.color = "#f87171";
+          sttMicBtn.style.background = "var(--danger-dim)";
+          sttMicBtn.style.color = "var(--danger)";
           if (sttMicLabel) sttMicLabel.textContent = "음성 채점";
           checkDictationAnswer();
         },
         (errMessage) => {
           alert(errMessage);
-          sttMicBtn.style.background = "rgba(239, 68, 68, 0.1)";
-          sttMicBtn.style.color = "#f87171";
+          sttMicBtn.style.background = "var(--danger-dim)";
+          sttMicBtn.style.color = "var(--danger)";
           if (sttMicLabel) sttMicLabel.textContent = "음성 채점";
         },
         () => {
-          sttMicBtn.style.background = "rgba(239, 68, 68, 0.1)";
-          sttMicBtn.style.color = "#f87171";
+          sttMicBtn.style.background = "var(--danger-dim)";
+          sttMicBtn.style.color = "var(--danger)";
           if (sttMicLabel) sttMicLabel.textContent = "음성 채점";
         }
       );
@@ -405,22 +405,22 @@ function checkDictationAnswer() {
     sttScoreBadge.style.justifyContent = "center";
     sttScoreBadge.style.gap = "8px";
 
-    let color = "#f87171";
-    let bg = "rgba(239, 68, 68, 0.1)";
-    let border = "rgba(239, 68, 68, 0.25)";
+    let color = "var(--danger)";
+    let bg = "var(--danger-dim)";
+    let border = "var(--danger-dim)";
 
     if (score >= 90) {
-      color = "#34d399";
-      bg = "rgba(52, 211, 153, 0.1)";
-      border = "rgba(52, 211, 153, 0.25)";
+      color = "var(--success)";
+      bg = "var(--success-dim)";
+      border = "var(--success-dim)";
     } else if (score >= 70) {
-      color = "#818cf8";
-      bg = "rgba(129, 140, 248, 0.1)";
-      border = "rgba(129, 140, 248, 0.25)";
+      color = "var(--accent)";
+      bg = "var(--accent-dim)";
+      border = "var(--accent-dim)";
     } else if (score >= 50) {
-      color = "#fbbf24";
-      bg = "rgba(251, 191, 36, 0.1)";
-      border = "rgba(251, 191, 36, 0.25)";
+      color = "var(--warning)";
+      bg = "var(--warning-dim)";
+      border = "var(--warning-dim)";
     }
     
     sttScoreBadge.style.background = bg;
@@ -573,12 +573,12 @@ function renderSentencesList() {
           ${timeStr}
         </span>
         <div style="display: flex; gap: 4px; align-items: center; flex-shrink: 0;">
-          <button class="btn extract-star-btn" data-idx="${idx}" style="height: 24px; padding: 0 8px; font-size: 11px; background: rgba(34, 197, 94, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); border-radius: 4px; white-space: nowrap; cursor: pointer;">개별 추출</button>
-          <button class="btn remove-star-btn" data-idx="${idx}" style="height: 24px; padding: 0 8px; font-size: 11px; background: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); border-radius: 4px; white-space: nowrap; cursor: pointer;">삭제</button>
+          <button class="btn extract-star-btn" data-idx="${idx}" style="height: 24px; padding: 0 8px; font-size: 11px; background: var(--success-dim); color: var(--success); border: 1px solid var(--success-dim); border-radius: 4px; white-space: nowrap; cursor: pointer;">개별 추출</button>
+          <button class="btn remove-star-btn" data-idx="${idx}" style="height: 24px; padding: 0 8px; font-size: 11px; background: var(--danger-dim); color: var(--danger); border: 1px solid var(--danger-dim); border-radius: 4px; white-space: nowrap; cursor: pointer;">삭제</button>
         </div>
       </div>
       <textarea class="starred-sentence-input" data-idx="${idx}" rows="2" style="width: 100%; background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 14px; font-family: var(--font-ui); outline: none; resize: vertical;" placeholder="영어 문장">${escapeHtml(customText)}</textarea>
-      <input type="text" class="starred-translation-input" data-idx="${idx}" value="${escapeHtml(customTrans)}" placeholder="한국어 뜻 (비어있으면 Anki 전송 시 AI 자동 번역)" style="width: 100%; font-size: 13px; color: #34d399; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; margin-top: 6px; outline: none;">
+      <input type="text" class="starred-translation-input" data-idx="${idx}" value="${escapeHtml(customTrans)}" placeholder="한국어 뜻 (비어있으면 Anki 전송 시 AI 자동 번역)" style="width: 100%; font-size: 13px; color: var(--success); background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; margin-top: 6px; outline: none;">
     `;
 
     item.querySelector('.starred-sentence-input').addEventListener('input', (e) => {
@@ -677,21 +677,21 @@ function renderVocabList() {
     const vCard = document.createElement("div");
     vCard.className = "anki-card";
     vCard.style.marginBottom = "8px";
-    vCard.style.border = "1px solid rgba(167, 139, 250, 0.25)";
+    vCard.style.border = "1px solid var(--purple-dim)";
 
     vCard.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px;">
         <div style="display: flex; align-items: center; gap: 6px; flex: 1;">
-          <input type="text" class="vocab-word-input" value="${escapeHtml(v.word)}" style="font-weight: 600; font-size: 14px; color: var(--text-primary); background: transparent; border: 1px dashed rgba(255,255,255,0.15); border-radius: 4px; padding: 2px 6px; width: 100%; outline: none;" placeholder="단어/표현">
+          <input type="text" class="vocab-word-input" value="${escapeHtml(v.word)}" style="font-weight: 600; font-size: 14px; color: var(--text-primary); background: transparent; border: 1px dashed var(--border-hover); border-radius: 4px; padding: 2px 6px; width: 100%; outline: none;" placeholder="단어/표현">
         </div>
         <div style="display: flex; gap: 4px; align-items: center; flex-shrink: 0;">
-          <button class="btn extract-vocab-btn" style="height: 24px; padding: 0 8px; font-size: 11px; background: rgba(167, 139, 250, 0.15); color: #c4b5fd; border: 1px solid rgba(167, 139, 250, 0.3); border-radius: 4px; white-space: nowrap; cursor: pointer;">${v.extracted ? 'Anki 재전송' : 'Anki 전송'}</button>
-          <button class="btn remove-vocab-btn" style="height: 24px; padding: 0 8px; font-size: 11px; background: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); border-radius: 4px; white-space: nowrap; cursor: pointer;">삭제</button>
+          <button class="btn extract-vocab-btn" style="height: 24px; padding: 0 8px; font-size: 11px; background: var(--purple-dim); color: var(--purple); border: 1px solid var(--purple-dim); border-radius: 4px; white-space: nowrap; cursor: pointer;">${v.extracted ? 'Anki 재전송' : 'Anki 전송'}</button>
+          <button class="btn remove-vocab-btn" style="height: 24px; padding: 0 8px; font-size: 11px; background: var(--danger-dim); color: var(--danger); border: 1px solid var(--danger-dim); border-radius: 4px; white-space: nowrap; cursor: pointer;">삭제</button>
         </div>
       </div>
       
       <div style="margin-bottom: 6px;">
-        <input type="text" class="vocab-meaning-input" value="${escapeHtml(v.meaning)}" style="width: 100%; font-size: 13px; font-weight: 500; color: #34d399; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; outline: none;" placeholder="뜻/해석">
+        <input type="text" class="vocab-meaning-input" value="${escapeHtml(v.meaning)}" style="width: 100%; font-size: 13px; font-weight: 500; color: var(--success); background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; outline: none;" placeholder="뜻/해석">
       </div>
 
       <div style="margin-bottom: 6px;">
@@ -748,7 +748,7 @@ function renderVocabList() {
         if (res.success) {
           updateSavedVocabItem(v.id, { extracted: true });
           btn.textContent = "완료!";
-          btn.style.color = "#34d399";
+          btn.style.color = "var(--success)";
           setTimeout(() => {
             btn.disabled = false;
             btn.textContent = "Anki 재전송";

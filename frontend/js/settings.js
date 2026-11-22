@@ -167,7 +167,7 @@ export async function updateGoogleAuthStatus() {
     const status = await getGoogleAuthStatus();
     if (status.authenticated) {
       googleStatusBadge.innerHTML = `
-        <span style="color: #4ade80; font-weight: 600;">연동 완료</span>
+        <span style="color: var(--success); font-weight: 600;">연동 완료</span>
         <span style="color: var(--text-muted); margin-left: 6px;">(영어 채널 ${status.channels_count}개 발견)</span>
       `;
       if (googleAuthBtnText) googleAuthBtnText.textContent = "연동 해제";
@@ -264,12 +264,12 @@ function showSettingsToast(msg) {
       position: fixed;
       bottom: 24px;
       right: 24px;
-      background: #1e1b4b;
-      color: #fff;
+      background: var(--text-primary);
+      color: var(--bg-base);
       padding: 12px 20px;
       border-radius: 8px;
-      border: 1px solid #6366f1;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      border: none;
+      box-shadow: var(--shadow-lg);
       font-size: 13px;
       font-weight: 500;
       z-index: 99999;

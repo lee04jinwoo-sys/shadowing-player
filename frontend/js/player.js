@@ -191,10 +191,10 @@ export function showAviWarning() {
   if (!warnBox) {
     warnBox = document.createElement("div");
     warnBox.id = "avi-warning";
-    warnBox.style.cssText = "color: #ef4444; padding: 24px; text-align: center; font-size: 16px; font-weight: 600;";
+    warnBox.style.cssText = "color: var(--danger); padding: 24px; text-align: center; font-size: 16px; font-weight: 600;";
     warnBox.innerHTML = `
       재생 불가능한 파일 형식 (.avi)<br><br>
-      <span style="font-size: 14px; color: #94a3b8; font-weight: normal;">
+      <span style="font-size: 14px; color: var(--text-secondary); font-weight: normal;">
         HTML5 비디오는 .avi 재생을 지원하지 않습니다.<br>
         프로젝트 폴더 내 <code>convert_avi_to_mp4.py</code>를 실행하여 변환해 주세요.
       </span>

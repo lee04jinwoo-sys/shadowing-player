@@ -103,9 +103,9 @@ export function renderSubtitles() {
 
     // Green border for extracted, Yellow border for starred
     if (isExtracted) {
-      item.style.borderLeft = "3px solid #22c55e";
+      item.style.borderLeft = "3px solid var(--success)";
     } else if (isStarred) {
-      item.style.borderLeft = "3px solid #fbbf24";
+      item.style.borderLeft = "3px solid var(--warning)";
     } else {
       item.style.borderLeft = "1px solid transparent";
     }
@@ -291,7 +291,7 @@ export function updateStarUI(index) {
     
     if (dictationStarBtn) {
       if (isStarred) {
-        dictationStarBtn.style.background = "rgba(251, 191, 36, 0.2)";
+        dictationStarBtn.style.background = "var(--warning-dim)";
         dictationStarBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 15px; vertical-align: middle;">star</span> 보관됨 (A)';
       } else {
         dictationStarBtn.style.background = "transparent";
@@ -304,7 +304,7 @@ export function updateStarUI(index) {
   const listItems = subtitleList.querySelectorAll('.subtitle-item');
   if (listItems[index]) {
     listItems[index].style.borderLeft = state.starredSubtitles.has(index) 
-      ? "3px solid #fbbf24" 
+      ? "3px solid var(--warning)" 
       : "1px solid transparent";
   }
 }

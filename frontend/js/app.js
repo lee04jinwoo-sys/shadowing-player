@@ -10,6 +10,7 @@ import { renderSubtitles, updateActiveSubtitleUI, clearOverlays, findActiveSubti
 import { setMode, bindModeEvents, updateDictationPanel, toggleBlur, renderStarredList } from './modes.js';
 import { initDictionary, showWordDictionary } from './dict.js';
 import { initSettingsModal, openSettingsModal } from './settings.js';
+import { initThemeToggle } from './theme.js';
 
 // Expose global triggers
 window._showWordDictionary = showWordDictionary;
@@ -61,6 +62,7 @@ async function init() {
   // 1. Initialize interactive popup dictionary & Settings modal
   initDictionary();
   initSettingsModal();
+  initThemeToggle();
   window._reloadEpisodes = fetchEpisodes;
   window._refreshSubscriptions = loadSubscriptionsBar;
 
