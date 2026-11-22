@@ -13,7 +13,8 @@ import { ExploreView } from './components/ExploreView';
 import { ExtractionPanel } from './components/ExtractionPanel';
 import { Header } from './components/Header';
 import { ListeningPanel } from './components/ListeningPanel';
-import { MediaContextBar } from './components/MediaContextBar';
+import { LibrarySidebar } from './components/LibrarySidebar';
+import { MediaToolbar } from './components/MediaToolbar';
 import { SettingsModal } from './components/SettingsModal';
 import { ShortcutsModal } from './components/ShortcutsModal';
 import { Sidebar } from './components/Sidebar';
@@ -533,7 +534,29 @@ export default function App() {
           className={!theaterMode && sourceMode === 'explore' ? 'hidden' : 'contents'}
           aria-hidden={!theaterMode && sourceMode === 'explore' ? true : undefined}
         >
-          {/* Left Stage Column: Single Unified Hairline Studio Frame */}
+          {!theaterMode && (sourceMode === 'local' || sourceMode === 'youtube') && (
+            <LibrarySidebar
+              sourceMode={sourceMode}
+              episodes={episodes}
+              selectedEpKey={selectedEpKey}
+              activeMediaKey={activeMediaKey}
+              completedEpisodes={collections.completedEpisodes}
+              extractedByEpisode={collections.extractedByEpisode}
+              onSelectEpisode={(key) => void selectLocalEpisode(key)}
+              onRefreshEpisodes={() => {
+                void reloadEpisodes(true).then(() =>
+                  showToast('로컬 미디어 목록을 새로고침했습니다.', 'info'),
+                );
+              }}
+              youtubeUrl={youtubeUrl}
+              onChangeYoutubeUrl={setYoutubeUrl}
+              onLoadYoutube={(url) => void loadYoutubeVideo(url)}
+              youtubeLoading={youtubeLoading}
+              youtubeHistory={youtubeHistory}
+            />
+          )}
+
+          {/* Center column: media toolbar + video stage */}
           <div
             data-testid="stage-column"
             className={
@@ -546,36 +569,22 @@ export default function App() {
               className={
                 theaterMode
                   ? 'flex-1 min-h-0 flex flex-col'
-                  : 'card-surface lg:flex-1 lg:min-h-0 flex flex-col rounded-2xl border border-line bg-surface divide-y divide-line'
+                  : 'card-surface lg:flex-1 lg:min-h-0 flex flex-col rounded-xl border border-line bg-card divide-y divide-line overflow-hidden'
               }
             >
               {!theaterMode && (sourceMode === 'local' || sourceMode === 'youtube') && (
-                <MediaContextBar
-                  sourceMode={sourceMode}
-                  episodes={episodes}
-                  selectedEpKey={selectedEpKey}
-                  activeMediaKey={activeMediaKey}
-                  completedEpisodes={collections.completedEpisodes}
-                  extractedByEpisode={collections.extractedByEpisode}
-                  onSelectEpisode={(key) => void selectLocalEpisode(key)}
-                  onRefreshEpisodes={() => {
-                    void reloadEpisodes(true).then(() =>
-                      showToast('로컬 미디어 목록을 새로고침했습니다.', 'info'),
-                    );
-                  }}
+                <MediaToolbar
+                  title={activeTitle}
+                  epKey={sourceMode === 'local' ? selectedEpKey || undefined : undefined}
+                  completed={Boolean(selectedEpKey && collections.completedEpisodes.has(selectedEpKey))}
                   onSearchOnlineSubtitles={handleSearchOnlineSubtitles}
-                  onToggleEpisodeComplete={(key) => {
+                  onToggleComplete={(key) => {
                     const done = collections.handleToggleEpisodeComplete(key);
                     showToast(
                       done ? '에피소드를 학습 완료로 표시했습니다.' : '학습 완료 표시를 해제했습니다.',
                       'info',
                     );
                   }}
-                  youtubeUrl={youtubeUrl}
-                  onChangeYoutubeUrl={setYoutubeUrl}
-                  onLoadYoutube={(url) => void loadYoutubeVideo(url)}
-                  youtubeLoading={youtubeLoading}
-                  youtubeHistory={youtubeHistory}
                 />
               )}
 

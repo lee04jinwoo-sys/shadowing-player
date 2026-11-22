@@ -32,8 +32,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
+      data-testid="study-panel"
       style={{ '--sidebar-w': `${width}px` } as React.CSSProperties}
-      className="relative flex flex-col bg-surface border-t lg:border-t-0 lg:border-l border-line h-[52vh] min-h-[340px] lg:h-full lg:min-h-0 lg:w-[var(--sidebar-w)] shrink-0 overflow-hidden"
+      className="relative flex flex-col bg-card border-t lg:border-t-0 lg:border-l border-line h-[52vh] min-h-[340px] lg:h-full lg:min-h-0 lg:w-[var(--sidebar-w)] shrink-0 overflow-hidden"
     >
       {/* Desktop resize handle */}
       <div
@@ -46,7 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Mode Selector */}
       <div className="border-b border-line px-3 py-2 shrink-0">
-        <div className="grid grid-cols-3 rounded-lg bg-surface-2 p-0.5 gap-0.5">
+        <div className="grid grid-cols-3 rounded-lg bg-surface-3 p-0.5 gap-0.5">
           {tabs.map((tab) => {
             const active = activeMode === tab.id;
             return (
@@ -56,14 +57,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => onChangeMode(tab.id)}
                 className={`inline-flex items-center justify-center gap-1.5 h-8 rounded-md text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
                   active
-                    ? 'bg-surface-3 text-ink shadow-[0_1px_0_var(--line-strong)_inset]'
+                    ? 'bg-card text-ink font-semibold card-surface'
                     : 'text-ink-3 hover:text-ink'
                 }`}
               >
-                <span className={active ? 'text-accent' : ''}>{tab.icon}</span>
+                <span>{tab.icon}</span>
                 <span>{tab.label}</span>
                 {tab.badge !== undefined && (
-                  <span className="num px-1.5 py-0.5 rounded-full bg-accent/15 text-accent text-[10px] font-semibold leading-none">
+                  <span className="num px-1.5 py-0.5 rounded-full bg-warn/15 text-warn text-[10px] font-semibold leading-none">
                     {tab.badge}
                   </span>
                 )}

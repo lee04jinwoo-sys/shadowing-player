@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Captions,
   Compass,
   FolderOpen,
   Keyboard,
@@ -70,79 +69,63 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'explore', label: '탐색', icon: <Compass className="w-3.5 h-3.5" />, title: '유튜브 영상 탐색 및 추천' },
   ];
 
+  const pill =
+    'inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-line bg-card text-xs font-medium text-ink-2 hover:text-ink hover:border-line-strong transition-colors whitespace-nowrap cursor-pointer';
+
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur-xl">
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-2.5 px-4 sm:px-5 py-2 md:h-12 md:py-0">
-        {/* Left: Brand & Active Media */}
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-accent/15 border border-accent/25 text-accent">
-            <Captions className="w-4 h-4" />
-          </div>
-          <div className="flex items-center gap-2 min-w-0">
-            <h1 className="font-serif text-[15px] font-semibold tracking-tight text-ink whitespace-nowrap">
+    <header className="sticky top-0 z-40 border-b border-line bg-canvas/95 backdrop-blur">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 sm:px-6 py-2 md:h-14 md:py-0">
+        {/* Left: Brand & source tabs */}
+        <div className="flex items-center gap-4 sm:gap-6 min-w-0">
+          <div className="flex items-center gap-2 shrink-0">
+            <span aria-hidden="true" className="text-xl">🎬</span>
+            <h1 className="font-serif text-lg font-semibold tracking-tight text-ink whitespace-nowrap">
               Shadowing Player
             </h1>
-            {activeTitle && (
-              <span
-                title={activeTitle}
-                className="hidden lg:inline-flex items-center gap-2 max-w-[260px] truncate text-xs font-medium text-ink-3"
-              >
-                <span aria-hidden="true" className="text-line-strong">/</span>
-                <span className="truncate text-ink-2">{activeTitle}</span>
-              </span>
-            )}
           </div>
+
+          <nav
+            aria-label="영상 소스 전환"
+            className="inline-flex items-center rounded-lg bg-surface-3 p-0.5 shrink-0"
+          >
+            {sourceTabs.map((tab) => {
+              const active = sourceMode === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  title={tab.title}
+                  onClick={() => onChangeSource(tab.id)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap cursor-pointer ${
+                    active
+                      ? 'bg-card text-ink font-semibold card-surface'
+                      : 'text-ink-3 hover:text-ink'
+                  }`}
+                >
+                  {tab.icon}
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        {/* Center: 3-Way Source Switcher */}
-        <nav
-          aria-label="영상 소스 전환"
-          className="inline-flex items-center justify-self-start md:justify-self-center rounded-lg bg-surface-2 p-0.5 gap-0.5"
-        >
-          {sourceTabs.map((tab) => {
-            const active = sourceMode === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                title={tab.title}
-                onClick={() => onChangeSource(tab.id)}
-                className={`inline-flex items-center gap-1.5 h-7 px-3 rounded-md text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
-                  active
-                    ? 'bg-surface-3 text-ink shadow-[0_1px_0_var(--line-strong)_inset]'
-                    : 'text-ink-3 hover:text-ink'
-                }`}
-              >
-                <span className={active ? 'text-accent' : ''}>{tab.icon}</span>
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Right: Utilities & Theme (Borderless Ghost Controls) */}
-        <div className="flex items-center justify-end gap-0.5 sm:gap-1">
-          <button
-            type="button"
-            onClick={onRecheckAnki}
-            title={statusInfo.title}
-            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg hover:bg-surface-2 text-xs font-medium text-ink-2 hover:text-ink transition-colors whitespace-nowrap cursor-pointer"
-          >
+        {/* Right: status pills & utilities */}
+        <div className="flex items-center justify-end gap-1.5 sm:gap-2">
+          <button type="button" onClick={onRecheckAnki} title={statusInfo.title} className={pill}>
             {ankiChecking ? (
-              <RefreshCw className="w-3 h-3 text-accent animate-spin shrink-0" />
+              <RefreshCw className="w-3 h-3 animate-spin shrink-0" />
             ) : (
               <span className={`w-2 h-2 rounded-full ${dotClass} shrink-0`} />
             )}
             <span>{ankiChecking ? '확인 중...' : statusInfo.label}</span>
           </button>
 
-          <span aria-hidden="true" className="hidden sm:block h-3.5 w-px bg-line mx-0.5" />
-
           <button
             type="button"
             onClick={onOpenShortcuts}
             title="단축키 안내 (?)"
-            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg hover:bg-surface-2 text-xs font-medium text-ink-2 hover:text-ink transition-colors whitespace-nowrap cursor-pointer"
+            className={pill}
           >
             <Keyboard className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">단축키</span>
@@ -152,7 +135,7 @@ export const Header: React.FC<HeaderProps> = ({
             type="button"
             onClick={onOpenSettings}
             title="API 키 및 저장 경로 설정"
-            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg hover:bg-surface-2 text-xs font-medium text-ink-2 hover:text-ink transition-colors whitespace-nowrap cursor-pointer"
+            className={pill}
           >
             <Settings className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">설정</span>
@@ -163,13 +146,9 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={onToggleTheme}
             aria-label="테마 전환"
             title={theme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환'}
-            className="grid h-8 w-8 place-items-center rounded-lg hover:bg-surface-2 text-ink-2 hover:text-ink transition-colors cursor-pointer"
+            className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-card text-ink-2 hover:text-ink hover:border-line-strong transition-colors cursor-pointer"
           >
-            {theme === 'dark' ? (
-              <Sun className="w-4 h-4 text-accent" />
-            ) : (
-              <Moon className="w-4 h-4 text-accent" />
-            )}
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
         </div>
       </div>

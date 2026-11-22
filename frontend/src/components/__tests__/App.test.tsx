@@ -204,12 +204,8 @@ describe('App UI shell & interactions', () => {
       expect(screen.getByText('쇼에 오신 것을 환영합니다.')).toBeInTheDocument();
     });
 
-    const epTrigger = screen.getByRole('button', { name: '에피소드 선택' });
-    fireEvent.click(epTrigger);
-    fireEvent.click(screen.getByRole('option', { name: /S01E02/i }));
-
-    fireEvent.click(epTrigger);
-    fireEvent.click(screen.getByRole('option', { name: /S01E03/i }));
+    fireEvent.click(screen.getByRole('button', { name: /S01E02/i }));
+    fireEvent.click(screen.getByRole('button', { name: /S01E03/i }));
 
     await waitFor(() => {
       expect(screen.getByText('에피소드 3 최신')).toBeInTheDocument();
@@ -241,7 +237,7 @@ describe('App UI shell & interactions', () => {
     const viewport = screen.getByTestId('video-viewport');
     expect(viewport.className).toContain('aspect-video');
 
-    const sidebar = document.querySelector('aside');
+    const sidebar = screen.getByTestId('study-panel');
     expect(sidebar?.className).toContain('h-[52vh]');
   });
 

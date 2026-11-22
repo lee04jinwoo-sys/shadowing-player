@@ -7,6 +7,8 @@
   --surface-2: #252525;
   --surface-3: #2d2d2d;
   --stage: #141414;
+  --rail: #202020;
+  --card: #252525;
   --line: #333333;
   --line-strong: #444444;
   --ink: #e6e6e6;
@@ -30,6 +32,8 @@
   --surface-2: #f7f6f3;
   --surface-3: #f1f0ec;
   --stage: #141414;
+  --rail: #f7f6f3;
+  --card: #ffffff;
   --line: #e9e8e4;
   --line-strong: #d6d4cc;
   --ink: #37352f;
@@ -55,6 +59,8 @@
   --color-surface-2: var(--surface-2);
   --color-surface-3: var(--surface-3);
   --color-stage: var(--stage);
+  --color-rail: var(--rail);
+  --color-card: var(--card);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
   --color-ink: var(--ink);
