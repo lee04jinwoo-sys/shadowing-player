@@ -9,7 +9,8 @@
         var t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         try {
           var saved = localStorage.getItem('shadowing_theme');
-          if (localStorage.getItem('shadowing_theme_rev') === 'paper-1' && (saved === 'light' || saved === 'dark')) {
+          // same rule as utils/storage.ts getThemePref: an explicit choice wins, otherwise the OS setting
+          if (localStorage.getItem('shadowing_theme_rev') === 'pref-1' && (saved === 'light' || saved === 'dark')) {
             t = saved;
           }
         } catch (e) {}

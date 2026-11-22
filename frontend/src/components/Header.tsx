@@ -3,13 +3,20 @@ import {
   Compass,
   FolderOpen,
   Keyboard,
+  Monitor,
   Moon,
   PlayCircle,
   RefreshCw,
   Settings,
   Sun,
 } from 'lucide-react';
-import type { AnkiStatus, SourceMode, ThemeMode } from '../types';
+import type { AnkiStatus, SourceMode, ThemeMode, ThemePref } from '../types';
+
+const THEME_TITLES: Record<ThemePref, string> = {
+  system: '테마: 시스템 설정 따름 (클릭하면 라이트)',
+  light: '테마: 라이트 (클릭하면 다크)',
+  dark: '테마: 다크 (클릭하면 시스템 설정)',
+};
 
 interface HeaderProps {
   sourceMode: SourceMode;
@@ -21,7 +28,8 @@ interface HeaderProps {
   onOpenShortcuts: () => void;
   onOpenSettings: () => void;
   theme: ThemeMode;
-  onToggleTheme: () => void;
+  themePref: ThemePref;
+  onCycleTheme: () => void;
 }
 
 const ANKI_STATUS_INFO: Record<string, { label: string; title: string }> = {
@@ -53,7 +61,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenShortcuts,
   onOpenSettings,
   theme,
-  onToggleTheme,
+  themePref,
+  onCycleTheme,
 }) => {
   const statusInfo = ANKI_STATUS_INFO[ankiStatus.reason] ?? ANKI_STATUS_INFO.gateway_unreachable;
 
@@ -143,12 +152,12 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             type="button"
-            onClick={onToggleTheme}
-            aria-label="테마 전환"
-            title={theme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환'}
+            onClick={onCycleTheme}
+            aria-label={`테마 전환 (${THEME_TITLES[themePref]})`}
+            title={THEME_TITLES[themePref]}
             className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-card text-ink-2 hover:text-ink hover:border-line-strong transition-colors cursor-pointer"
           >
-            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {themePref === 'system' ? <Monitor className="w-4 h-4" /> : theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
           </button>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import type { LastWatchedState, SavedVocabItem, ThemeMode, YouTubeHistoryItem } from '../types';
+import type { LastWatchedState, SavedVocabItem, ThemePref, YouTubeHistoryItem } from '../types';
 
 const KEYS = {
   starred: 'shadowing_starred',
@@ -184,27 +184,29 @@ export function deleteSavedVocabItem(id: string): SavedVocabItem[] {
   return list;
 }
 
-// 종이 팔레트 개편 이전에 저장된 테마(기본 다크)는 한 번 무시해서 새 디자인으로 시작한다.
-const THEME_REV = 'paper-1';
+// Only a click stores a theme. Values from earlier revisions were written on every load (so the first
+// visit's OS setting stuck forever); they are ignored once.
+const THEME_REV = 'pref-1';
 
-export function getSavedTheme(): ThemeMode {
+export function getThemePref(): ThemePref {
   try {
     const val = localStorage.getItem(KEYS.theme);
     if (localStorage.getItem(KEYS.themeRev) === THEME_REV && (val === 'light' || val === 'dark')) return val;
   } catch {
-    // fall through to the OS preference
+    // private mode etc.
   }
-  try {
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  } catch {
-    return 'light';
-  }
+  return 'system';
 }
 
-export function saveTheme(theme: ThemeMode): void {
+export function saveThemePref(pref: ThemePref): void {
   try {
-    localStorage.setItem(KEYS.theme, theme);
-    localStorage.setItem(KEYS.themeRev, THEME_REV);
+    if (pref === 'system') {
+      localStorage.removeItem(KEYS.theme);
+      localStorage.removeItem(KEYS.themeRev);
+    } else {
+      localStorage.setItem(KEYS.theme, pref);
+      localStorage.setItem(KEYS.themeRev, THEME_REV);
+    }
   } catch {
     // ignore
   }

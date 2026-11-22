@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import App from '../../App';
-import { saveTheme } from '../../utils/storage';
+import { saveThemePref } from '../../utils/storage';
 
 describe('App UI shell & interactions', () => {
   beforeEach(() => {
@@ -54,9 +54,10 @@ describe('App UI shell & interactions', () => {
   });
 
   it('renders 3-way source navigation, Anki status, sidebar tabs, and theme toggle', async () => {
-    // 기본 테마는 OS 설정을 따르므로, 토글 동작만 보도록 저장값을 고정한다.
-    saveTheme('dark');
+    // 저장된 선택(다크)에서 시작해 버튼 한 번이면 '시스템 설정 따름'으로 돌아간다.
+    saveThemePref('dark');
     render(<App />);
+    expect(document.documentElement.dataset.theme).toBe('dark');
 
     expect(screen.getByRole('button', { name: /로컬/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /YouTube/ })).toBeInTheDocument();
@@ -72,8 +73,25 @@ describe('App UI shell & interactions', () => {
 
     const themeBtn = screen.getByRole('button', { name: /테마 전환/ });
     fireEvent.click(themeBtn);
+    expect(document.documentElement.dataset.theme).toBe('light'); // the test OS setting is light
+    expect(localStorage.getItem('shadowing_theme')).toBeNull();
+  });
+
+  it('in system mode follows the OS setting as soon as it changes', async () => {
+    let listener: ((e: { matches: boolean }) => void) | null = null;
+    let dark = false;
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      get matches() { return dark && query.includes('dark'); },
+      media: query,
+      addEventListener: (_: string, fn: (e: { matches: boolean }) => void) => { listener = fn; },
+      removeEventListener: () => { listener = null; },
+    }));
+    render(<App />);
     expect(document.documentElement.dataset.theme).toBe('light');
-    expect(localStorage.getItem('shadowing_theme')).toBe('light');
+    dark = true;
+    await act(async () => listener?.({ matches: true }));
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    vi.unstubAllGlobals();
   });
 
   it('supports keyboard shortcuts for blur (V), A-B loop (R), theater mode (F), and shortcuts modal (?)', async () => {

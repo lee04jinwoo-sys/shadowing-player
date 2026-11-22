@@ -11,8 +11,8 @@ import {
   updateSavedVocabItem,
   deleteSavedVocabItem,
   getSavedVocab,
-  getSavedTheme,
-  saveTheme,
+  getThemePref,
+  saveThemePref,
 } from '../storage';
 
 describe('localStorage persistence compatibility', () => {
@@ -65,9 +65,9 @@ describe('localStorage persistence compatibility', () => {
   });
 
   it('saves and retrieves theme preference', () => {
-    saveTheme('light');
-    expect(getSavedTheme()).toBe('light');
-    saveTheme('dark');
-    expect(getSavedTheme()).toBe('dark');
+    saveThemePref('light');
+    expect(getThemePref()).toBe('light');
+    saveThemePref('dark');
+    expect(getThemePref()).toBe('dark');
   });
 });

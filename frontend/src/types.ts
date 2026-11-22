@@ -2,6 +2,8 @@ export type SourceMode = 'local' | 'youtube' | 'explore';
 export type SidebarMode = 'listening' | 'dictation' | 'anki';
 export type ExtractionTab = 'sentences' | 'words';
 export type ThemeMode = 'dark' | 'light';
+/** What the user picked; 'system' follows the OS setting. */
+export type ThemePref = 'system' | ThemeMode;
 
 export interface Episode {
   ep_key: string;

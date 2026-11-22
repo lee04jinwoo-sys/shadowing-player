@@ -32,17 +32,19 @@ import type {
   SourceMode,
   SubtitleItem,
   ThemeMode,
+  ThemePref,
   YouTubeHistoryItem,
 } from './types';
+import { DARK_QUERY, nextThemePref, resolveTheme } from './utils/theme';
 import {
   addYouTubeToHistory,
   getLastWatched,
   getSavedSidebarWidth,
-  getSavedTheme,
+  getThemePref,
   getYouTubeHistory,
   saveLastWatched,
   saveSidebarWidth,
-  saveTheme,
+  saveThemePref,
 } from './utils/storage';
 
 export default function App() {
@@ -50,7 +52,9 @@ export default function App() {
   const collections = useEpisodeCollections();
 
   // Theme & shell layout
-  const [theme, setTheme] = useState<ThemeMode>(() => getSavedTheme());
+  const [themePref, setThemePref] = useState<ThemePref>(() => getThemePref());
+  const [systemDark, setSystemDark] = useState<boolean>(() => window.matchMedia?.(DARK_QUERY)?.matches ?? false);
+  const theme: ThemeMode = resolveTheme(themePref, systemDark);
   const [sourceMode, setSourceMode] = useState<SourceMode>('local');
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>('listening');
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => getSavedSidebarWidth(400));
@@ -120,9 +124,17 @@ export default function App() {
     onSubtitleAdvanceInDictation: clearDictationLine,
   });
 
+  // In system mode the theme follows the OS as soon as it changes.
+  useEffect(() => {
+    const mq = window.matchMedia?.(DARK_QUERY);
+    if (!mq?.addEventListener) return;
+    const onChange = (e: { matches: boolean }) => setSystemDark(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    saveTheme(theme);
   }, [theme]);
 
   const refreshAnki = useCallback(async () => {
@@ -505,7 +517,12 @@ export default function App() {
             setSettingsOpen(true);
           }}
           theme={theme}
-          onToggleTheme={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
+          themePref={themePref}
+          onCycleTheme={() => {
+            const next = nextThemePref(themePref);
+            setThemePref(next);
+            saveThemePref(next);
+          }}
         />
       )}
 

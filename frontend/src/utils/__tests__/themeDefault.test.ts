@@ -1,41 +1,49 @@
-import { describe, it, expect, afterEach, vi } from 'vitest';
-import { getSavedTheme, saveTheme } from '../storage';
+import { describe, it, expect, afterEach } from 'vitest';
+import { getThemePref, saveThemePref } from '../storage';
+import { nextThemePref, resolveTheme } from '../theme';
 
-describe('getSavedTheme default', () => {
-  afterEach(() => {
-    localStorage.clear();
-    vi.unstubAllGlobals();
+describe('theme preference', () => {
+  afterEach(() => localStorage.clear());
+
+  it('follows the system when nothing was chosen', () => {
+    expect(getThemePref()).toBe('system');
   });
 
-  const stubScheme = (dark: boolean) =>
-    vi.stubGlobal('matchMedia', (q: string) => ({ matches: dark && q.includes('dark') }));
-
-  it('follows the OS dark preference when nothing is saved', () => {
-    stubScheme(true);
-    expect(getSavedTheme()).toBe('dark');
+  it('ignores values saved before this change: they were written on every load, not chosen', () => {
+    localStorage.setItem('shadowing_theme', 'dark');
+    localStorage.setItem('shadowing_theme_rev', 'paper-1');
+    expect(getThemePref()).toBe('system');
+    localStorage.setItem('shadowing_theme', 'light');
+    localStorage.removeItem('shadowing_theme_rev');
+    expect(getThemePref()).toBe('system');
   });
 
-  it('falls back to light when the OS prefers light or matchMedia is missing', () => {
-    stubScheme(false);
-    expect(getSavedTheme()).toBe('light');
-    vi.stubGlobal('matchMedia', undefined);
-    expect(getSavedTheme()).toBe('light');
+  it('keeps an explicit choice', () => {
+    saveThemePref('dark');
+    expect(getThemePref()).toBe('dark');
+    saveThemePref('light');
+    expect(getThemePref()).toBe('light');
   });
 
-  it('keeps an explicit saved choice over the OS preference', () => {
-    stubScheme(true);
-    saveTheme('light');
-    expect(getSavedTheme()).toBe('light');
-    saveTheme('dark');
-    stubScheme(false);
-    expect(getSavedTheme()).toBe('dark');
+  it('choosing system again removes the stored choice', () => {
+    saveThemePref('dark');
+    saveThemePref('system');
+    expect(getThemePref()).toBe('system');
+    expect(localStorage.getItem('shadowing_theme')).toBeNull();
+  });
+});
+
+describe('resolveTheme / nextThemePref', () => {
+  it('uses the system setting only in system mode', () => {
+    expect(resolveTheme('system', true)).toBe('dark');
+    expect(resolveTheme('system', false)).toBe('light');
+    expect(resolveTheme('light', true)).toBe('light');
+    expect(resolveTheme('dark', false)).toBe('dark');
   });
 
-  it('ignores a theme saved before the paper-palette overhaul (one-time reset)', () => {
-    stubScheme(false);
-    localStorage.setItem('shadowing_theme', 'dark'); // 개편 전 저장값: 리비전 마커 없음
-    expect(getSavedTheme()).toBe('light');
-    saveTheme('dark');
-    expect(getSavedTheme()).toBe('dark');
+  it('cycles system -> light -> dark -> system', () => {
+    expect(nextThemePref('system')).toBe('light');
+    expect(nextThemePref('light')).toBe('dark');
+    expect(nextThemePref('dark')).toBe('system');
   });
 });
