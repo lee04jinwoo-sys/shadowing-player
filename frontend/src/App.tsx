@@ -683,6 +683,7 @@ export default function App() {
                     sourceName={sourceNameForAnki}
                     ankiConnected={ankiStatus.connected}
                     starredSubtitles={collections.starredSubtitles}
+                    extractedSubtitles={collections.extractedSubtitles}
                     editedText={collections.editedText}
                     editedTranslation={collections.editedTranslation}
                     savedVocab={collections.savedVocab}

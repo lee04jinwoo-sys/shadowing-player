@@ -9,6 +9,7 @@ interface ExtractionPanelProps {
   sourceName: string;
   ankiConnected: boolean;
   starredSubtitles: Set<number>;
+  extractedSubtitles: Set<number>;
   editedText: Record<number, string>;
   editedTranslation: Record<number, string>;
   savedVocab: SavedVocabItem[];
@@ -26,6 +27,7 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
   sourceName,
   ankiConnected,
   starredSubtitles,
+  extractedSubtitles,
   editedText,
   editedTranslation,
   savedVocab,
@@ -52,7 +54,10 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
     };
   }, []);
 
-  const sortedStarred = Array.from(starredSubtitles).sort((a, b) => a - b);
+  // 이미 Anki로 보낸 문장은 대기 목록에서 뺀다 (단어 탭의 pendingVocab과 같은 규칙).
+  const sortedStarred = Array.from(starredSubtitles)
+    .filter((idx) => !extractedSubtitles.has(idx))
+    .sort((a, b) => a - b);
   const pendingVocab = savedVocab.filter((v) => !v.extracted);
 
   const buildSentenceExportItems = (): ExportItemPayload[] =>
