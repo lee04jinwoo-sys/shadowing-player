@@ -156,15 +156,15 @@ def fake_genai(monkeypatch):
     return FakeGenai
 
 
-def test_lookup_prompt_follows_two_step_zero_synonym_rule(client, fake_genai):
+def test_lookup_prompt_follows_zero_synonym_no_explanation_rule(client, fake_genai):
     client.post("/api/dict/lookup", json={"word": "sprint", "context": "He sprinted."})
     prompt = fake_genai.last_prompt
 
     assert prompt is not None
     assert "유의어 비교" not in prompt
     assert "synonyms" not in prompt
-    assert "2단계" in prompt
-    assert "콜로케이션" in prompt
+    assert '"explanation"' not in prompt
+    assert "2단계" not in prompt
     assert "prep" not in prompt and "conj" not in prompt
     assert "슬래시" in prompt
 
@@ -197,12 +197,13 @@ def test_anki_core_prompts_match_anki_manager_rules():
 
     sys_instruct = config.NOTE_COMPLETOR_SYS_INSTRUCT
     assert "유의어" not in sys_instruct
-    assert "2단계" in sys_instruct
+    assert "설명 (2단계" not in sys_instruct
     assert "슬래시" in sys_instruct
     assert "jargon" not in sys_instruct
 
     enrich_src = inspect.getsource(completer.NoteCompleter.enrich_vocab)
     assert "유의어" not in enrich_src
+    assert "설명" not in enrich_src
 
 
 # --- 파일 내보내기 ---
