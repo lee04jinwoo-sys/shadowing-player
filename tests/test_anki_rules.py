@@ -169,24 +169,30 @@ def test_lookup_prompt_follows_zero_synonym_no_explanation_rule(client, fake_gen
     assert "슬래시" in prompt
 
 
-def test_lookup_response_has_no_synonyms(client, fake_genai):
+def test_lookup_response_has_no_synonyms_or_explanation(client, fake_genai):
     body = client.post("/api/dict/lookup", json={"word": "sprint", "context": ""}).json()
 
     assert "synonyms" not in body
+    assert "explanation" not in body
     assert body["meaning"] == "전력 질주하다"
 
 
 def test_lookup_ignores_cache_entries_written_under_old_rules(client, fake_genai):
-    # 옛 룰(유의어, 3단계 설명)로 캐시된 항목은 다시 쓰지 않는다
+    # 옛 룰(v1 무접두사, v2 설명 포함)로 캐시된 항목은 다시 쓰지 않는다
     dict_router.set_cached_word("sprint", {
         "word": "sprint", "meaning": "옛 뜻", "synonyms": ["dash"],
         "explanation": "① ... ② 유의어 비교 ... ③ ...",
+    })
+    dict_router.set_cached_word("v2:sprint", {
+        "word": "sprint", "meaning": "v2 뜻",
+        "explanation": "① 의미 ② 연어",
     })
 
     body = client.post("/api/dict/lookup", json={"word": "sprint", "context": ""}).json()
 
     assert fake_genai.last_prompt is not None
     assert body["meaning"] == "전력 질주하다"
+    assert "explanation" not in body
 
 
 # --- anki_core 프롬프트 (APKG 내보내기 보강에 사용) ---

@@ -22,8 +22,8 @@ router = APIRouter(prefix="/api/dict")
 ensure_directories()
 
 # 조회 결과 형식(카드 룰)이 바뀌면 올린다. 옛 룰로 캐시된 항목은 다시 조회한다.
-# v2 (2026-10-11): Anki Manager 룰 반영 — 유의어 없음, 설명 2단계, 품사 n/v/adj/adv/idiom
-DICT_CACHE_VERSION = "v2"
+# v3 (2026-11-27): Anki Manager 룰 반영 — 설명·유의어 제거, 품사 n/v/adj/adv/idiom
+DICT_CACHE_VERSION = "v3"
 
 
 def init_db() -> None:
@@ -97,6 +97,7 @@ def lookup_word(req: WordLookupRequest):
     cached = get_cached_word(cache_key)
     if cached:
         cached.pop("synonyms", None)
+        cached.pop("explanation", None)
         if "example" in cached and cached["example"]:
             cached["example"] = clean_vocab_example(cached["example"])
         return cached
@@ -134,6 +135,7 @@ def lookup_word(req: WordLookupRequest):
 
         data = json.loads(response.text)
         data.pop("synonyms", None)
+        data.pop("explanation", None)
         if "example" in data and data["example"]:
             data["example"] = clean_vocab_example(data["example"])
         set_cached_word(cache_key, data)
