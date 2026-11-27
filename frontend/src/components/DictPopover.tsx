@@ -430,19 +430,6 @@ export const DictPopover: React.FC<DictPopoverProps> = ({
 
             <div>
               <label className="block text-[10.5px] font-medium text-ink-3 mb-1">
-                뉘앙스 · 문맥 설명
-              </label>
-              <textarea
-                rows={2}
-                value={editExplanation}
-                onChange={(e) => setEditExplanation(e.target.value)}
-                placeholder="문맥상 쓰임 설명"
-                className="w-full px-2.5 py-1.5 rounded-lg bg-canvas border border-line text-xs text-ink-2 leading-relaxed resize-none focus:border-accent focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10.5px] font-medium text-ink-3 mb-1">
                 예문
               </label>
               <textarea

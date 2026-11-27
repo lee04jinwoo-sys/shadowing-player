@@ -446,14 +446,6 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
                   className="w-full h-8 rounded-lg bg-surface border border-line px-2.5 text-xs font-medium text-good outline-none focus:border-accent"
                 />
 
-                <textarea
-                  rows={2}
-                  value={v.explanation}
-                  onChange={(e) => onUpdateVocab(v.id, { explanation: e.target.value })}
-                  placeholder="2단계 설명 (뜻·뉘앙스 / 콜로케이션)"
-                  className="w-full rounded-lg bg-surface border border-line px-2.5 py-1.5 text-xs text-ink-2 outline-none focus:border-accent resize-y"
-                />
-
                 <input
                   type="text"
                   value={v.example}
